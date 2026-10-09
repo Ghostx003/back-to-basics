@@ -4,6 +4,7 @@ import { TabsManager } from '../src/background/tabs-manager';
 import { isBlockedUrl } from '../src/shared/blocklist';
 import {
   getDaysToGateCSE,
+  getGateCSECountdown,
   isExactSameStudyUrl,
   PomodoroSubject,
 } from '../src/shared/types';
@@ -24,6 +25,21 @@ describe('Interrogation, 3-Strike Enforcement & Productivity Analytics', () => {
       Math.ceil((examDate.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     );
     expect(daysLeft).toBe(expected);
+  });
+
+  it('calculates live countdown (days, hours, minutes, seconds) until GATE CSE 2027', () => {
+    const countdown = getGateCSECountdown();
+    expect(countdown.days).toBeGreaterThan(0);
+    expect(countdown.hours).toBeGreaterThanOrEqual(0);
+    expect(countdown.hours).toBeLessThan(24);
+    expect(countdown.minutes).toBeGreaterThanOrEqual(0);
+    expect(countdown.minutes).toBeLessThan(60);
+    expect(countdown.seconds).toBeGreaterThanOrEqual(0);
+    expect(countdown.seconds).toBeLessThan(60);
+    expect(countdown.formatted).toContain('Days');
+    expect(countdown.formatted).toContain('Hours');
+    expect(countdown.formatted).toContain('Min');
+    expect(countdown.formatted).toContain('Sec');
   });
 
   it('pauses and resumes study timer during interrogation without resetting remaining time', async () => {

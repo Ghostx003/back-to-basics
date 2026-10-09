@@ -8,7 +8,7 @@ import {
   GraduationCap,
   TrendingUp,
 } from 'lucide-react';
-import { getDaysToGateCSE, StudyAnalytics } from '../../shared/types';
+import { getGateCSECountdown, StudyAnalytics } from '../../shared/types';
 import { Card } from '../ui/Card';
 
 interface ProductivityAnalyticsViewProps {
@@ -18,7 +18,14 @@ interface ProductivityAnalyticsViewProps {
 export const ProductivityAnalyticsView: React.FC<ProductivityAnalyticsViewProps> = ({
   analytics,
 }) => {
-  const daysToGate = getDaysToGateCSE();
+  const [gateCountdown, setGateCountdown] = React.useState(getGateCSECountdown());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setGateCountdown(getGateCSECountdown());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const totalHours = (analytics.totalSecondsStudied / 3600).toFixed(1);
   const completedPomodoros = analytics.completedPomodoroCount;
@@ -93,11 +100,11 @@ export const ProductivityAnalyticsView: React.FC<ProductivityAnalyticsViewProps>
           </div>
 
           <div className="text-left sm:text-right shrink-0">
-            <div className="text-3xl font-black font-mono text-amber-400">
-              {daysToGate} <span className="text-sm font-semibold text-amber-300/80">days remaining</span>
+            <div className="text-2xl font-black font-mono text-amber-400">
+              {gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m {gateCountdown.seconds}s
             </div>
             <div className="text-[11px] text-text-muted mt-0.5">
-              Every Pomodoro interval contributes to your score.
+              Live countdown to 7 February 2027
             </div>
           </div>
         </div>

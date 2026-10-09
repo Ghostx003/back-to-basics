@@ -12,7 +12,7 @@ import {
   Shield,
   Zap,
 } from 'lucide-react';
-import { getDaysToGateCSE, SessionState } from '../../shared/types';
+import { getGateCSECountdown, SessionState } from '../../shared/types';
 import { Badge } from '../ui/Badge';
 
 export type ViewKey =
@@ -39,7 +39,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onPause,
   onResume,
 }) => {
-  const daysToGate = getDaysToGateCSE();
+  const [gateCountdown, setGateCountdown] = React.useState(getGateCSECountdown());
+
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setGateCountdown(getGateCSECountdown());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isSessionRunning = session.status === 'RunningStudy' || session.status === 'RunningBreak';
   const isSessionPaused = session.status === 'PausedStudy';
@@ -250,7 +257,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <span className="text-[11px] text-text-secondary font-medium">GATE CSE 2027</span>
           </div>
           <span className="font-mono text-[11px] font-bold text-amber-400">
-            {daysToGate}d left
+            {gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m
           </span>
         </div>
       </div>

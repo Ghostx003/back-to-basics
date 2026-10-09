@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   Trash2,
 } from 'lucide-react';
-import { getDaysToGateCSE, StudyAnalytics } from '../shared/types';
+import { getGateCSECountdown, StudyAnalytics } from '../shared/types';
 import { Badge } from './ui/Badge';
 import { Button } from './ui/Button';
 import { Card } from './ui/Card';
@@ -39,8 +39,14 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
   const [sortField, setSortField] = useState<SortField>('totalSeconds');
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [gateCountdown, setGateCountdown] = useState(getGateCSECountdown());
 
-  const daysToGate = getDaysToGateCSE();
+  React.useEffect(() => {
+    const timer = setInterval(() => {
+      setGateCountdown(getGateCSECountdown());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Metrics calculation
   const totalHours = (analytics.totalSecondsStudied / 3600).toFixed(1);
@@ -166,10 +172,10 @@ export const ProductivityDashboard: React.FC<ProductivityDashboardProps> = ({
         <Card variant="elevated" className="p-5 border-l-4 border-l-amber-500 flex items-center justify-between">
           <div>
             <span className="text-xs font-semibold uppercase tracking-wider text-text-secondary">
-              GATE CSE 2027
+              GATE CSE 2027 Live Countdown
             </span>
-            <div className="text-2xl font-black text-amber-400 mt-1">
-              {daysToGate} <span className="text-xs font-medium text-amber-300/80">days left</span>
+            <div className="text-xl font-black text-amber-400 font-mono mt-1">
+              {gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m {gateCountdown.seconds}s
             </div>
             <div className="text-xs text-text-muted mt-1">
               7 February 2027

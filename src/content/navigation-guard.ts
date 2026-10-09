@@ -10,9 +10,12 @@
  *    "If you want to close the session, I will let you quit."
  */
 
+import { getGateCSECountdown } from '../shared/types';
+
 export class NavigationGuard {
   private container: HTMLDivElement | null = null;
   private shadow: ShadowRoot | null = null;
+  private activeTicker: ReturnType<typeof setInterval> | null = null;
 
   private ensureContainer() {
     if (!this.container) {
@@ -49,6 +52,13 @@ export class NavigationGuard {
       displayDomain = destinationUrl;
     }
 
+    if (this.activeTicker) {
+      clearInterval(this.activeTicker);
+      this.activeTicker = null;
+    }
+
+    const countdown = getGateCSECountdown();
+
     this.shadow.innerHTML = `
       <style>
         * {
@@ -76,7 +86,7 @@ export class NavigationGuard {
           border: 1px solid #3f3f46;
           border-radius: 1rem;
           padding: 2rem;
-          max-width: 460px;
+          max-width: 480px;
           width: 100%;
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
           color: #f4f4f5;
@@ -111,18 +121,42 @@ export class NavigationGuard {
           font-size: 0.95rem;
           color: #a1a1aa;
           line-height: 1.5;
-          margin-bottom: 0.75rem;
+          margin-bottom: 1rem;
         }
-        .url-box {
+        .countdown-box {
           background-color: #18181b;
-          border: 1px solid #27272a;
+          border: 1px solid rgba(239, 68, 68, 0.5);
           border-radius: 0.5rem;
-          padding: 0.6rem 0.85rem;
-          font-size: 0.85rem;
-          color: #e4e4e7;
+          padding: 0.85rem 1rem;
           margin-bottom: 1.5rem;
-          word-break: break-all;
+          text-align: center;
+          box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);
+        }
+        .countdown-label {
+          font-size: 0.72rem;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.08em;
+          color: #ef4444;
+          margin-bottom: 0.35rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 0.35rem;
+        }
+        .countdown-value {
+          font-size: 1.15rem;
+          font-weight: 800;
+          color: #ffffff;
           font-family: monospace;
+          letter-spacing: 0.03em;
+        }
+        .url-hint {
+          font-size: 0.75rem;
+          color: #71717a;
+          margin-top: 0.35rem;
+          font-family: monospace;
+          word-break: break-all;
         }
         .btn-group {
           display: flex;
@@ -167,9 +201,17 @@ export class NavigationGuard {
             <h2 class="title" style="color: #ef4444;">WHAT ARE YOU DOING?! HAVE SOME SHAME!</h2>
           </div>
           <p class="desc" style="color: #e4e4e7; font-weight: 500;">
-            What are you doing clicking off your study material?! Your exam is on 7 February 2027! Have some shame!
+            What are you doing clicking off your study material?! Have some shame!
           </p>
-          <div class="url-box" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">${displayDomain}</div>
+          <div class="countdown-box">
+            <div class="countdown-label">
+              <span>⏳</span> <span>GATE CSE COUNTDOWN</span>
+            </div>
+            <div id="gate-live-countdown" class="countdown-value">
+              ${countdown.formatted}
+            </div>
+            ${displayDomain ? `<div class="url-hint">Off-target: ${displayDomain}</div>` : ''}
+          </div>
           <div class="btn-group">
             <button id="reject-btn" class="btn btn-redirect" type="button" style="background-color: #dc2626; color: #ffffff;">
               2. Sorry I was being distracted (Take me back to study)
@@ -181,6 +223,13 @@ export class NavigationGuard {
         </div>
       </div>
     `;
+
+    const countdownEl = this.shadow.getElementById('gate-live-countdown');
+    this.activeTicker = setInterval(() => {
+      if (countdownEl) {
+        countdownEl.textContent = getGateCSECountdown().formatted;
+      }
+    }, 1000);
 
     const approveBtn = this.shadow.getElementById('approve-btn');
     const rejectBtn = this.shadow.getElementById('reject-btn');
@@ -315,7 +364,7 @@ export class NavigationGuard {
   public showReopenedPrompt(
     subjectName: string,
     remainingMinutes: number,
-    daysToGate: number,
+    _daysToGate: number,
     onContinue: () => void,
     onQuit: () => void
   ) {
@@ -323,6 +372,13 @@ export class NavigationGuard {
     if (!this.shadow) return;
 
     const targetSubject = subjectName ? subjectName : 'your studies';
+
+    if (this.activeTicker) {
+      clearInterval(this.activeTicker);
+      this.activeTicker = null;
+    }
+
+    const countdown = getGateCSECountdown();
 
     this.shadow.innerHTML = `
       <style>
@@ -459,8 +515,14 @@ export class NavigationGuard {
             <p class="taunt-text">
               What are you doing closing your study tab and quitting?!
               <br/><br/>
-              <strong>Your exam is on 7 February 2027 (GATE CSE 2027) — ONLY <span class="days-badge">${daysToGate} DAYS LEFT</span>!</strong>
-              <br/><br/>
+              <div class="countdown-box" style="background-color: #18181b; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 0.5rem; padding: 0.75rem 1rem; margin: 0.85rem 0; text-align: center; box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);">
+                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #ef4444; margin-bottom: 0.25rem;">
+                  ⏳ GATE CSE COUNTDOWN
+                </div>
+                <div id="reopened-gate-live-countdown" style="font-size: 1.1rem; font-weight: 800; color: #ffffff; font-family: monospace;">
+                  ${countdown.formatted}
+                </div>
+              </div>
               You still have <strong>${remainingMinutes} minutes left</strong> in this interval! While you are slacking and closing tabs, thousands of competitors are grinding past you.
               <br/><br/>
               Stop making excuses and get back to studying <strong>${targetSubject}</strong> right now!
@@ -477,6 +539,13 @@ export class NavigationGuard {
         </div>
       </div>
     `;
+
+    const reopenedCountdownEl = this.shadow.getElementById('reopened-gate-live-countdown');
+    this.activeTicker = setInterval(() => {
+      if (reopenedCountdownEl) {
+        reopenedCountdownEl.textContent = getGateCSECountdown().formatted;
+      }
+    }, 1000);
 
     const continueBtn = this.shadow.getElementById('continue-study-btn');
     const quitBtn = this.shadow.getElementById('quit-session-btn');
@@ -502,7 +571,7 @@ export class NavigationGuard {
   public showNewTabInterrogation(
     subjectName: string,
     remainingMinutes: number,
-    daysToGate: number,
+    _daysToGate: number,
     onChoiceA: () => void,
     onChoiceBReturn: () => void
   ) {
@@ -668,8 +737,14 @@ export class NavigationGuard {
             <p class="motive-text">
               You still have <strong>${remainingMinutes} minutes</strong> left in this interval!
               <br/><br/>
-              <strong>GATE CSE is on 7 February 2027.</strong> Only <span class="gate-badge" style="background-color: rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 1rem;">${daysToGate} DAYS LEFT</span>.
-              <br/><br/>
+              <div class="countdown-box" style="background-color: #18181b; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 0.5rem; padding: 0.75rem 1rem; margin: 0.85rem 0; text-align: center; box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);">
+                <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #ef4444; margin-bottom: 0.25rem;">
+                  ⏳ GATE CSE COUNTDOWN
+                </div>
+                <div id="motive-gate-live-countdown" style="font-size: 1.1rem; font-weight: 800; color: #ffffff; font-family: monospace;">
+                  ${getGateCSECountdown().formatted}
+                </div>
+              </div>
               Every second you waste right now is a rank lost. Stop making excuses and get back to <strong>${targetSubject}</strong> IMMEDIATELY!
             </p>
           </div>
@@ -695,6 +770,16 @@ export class NavigationGuard {
       if (initialCard && motiveCard) {
         initialCard.style.display = 'none';
         motiveCard.style.display = 'block';
+
+        const motiveCountdownEl = this.shadow?.getElementById('motive-gate-live-countdown');
+        if (motiveCountdownEl) {
+          if (this.activeTicker) clearInterval(this.activeTicker);
+          this.activeTicker = setInterval(() => {
+            if (motiveCountdownEl) {
+              motiveCountdownEl.textContent = getGateCSECountdown().formatted;
+            }
+          }, 1000);
+        }
       }
     });
 
@@ -826,6 +911,10 @@ export class NavigationGuard {
   }
 
   public hide() {
+    if (this.activeTicker) {
+      clearInterval(this.activeTicker);
+      this.activeTicker = null;
+    }
     if (this.container && this.container.parentNode) {
       this.container.parentNode.removeChild(this.container);
       this.container = null;

@@ -10,13 +10,21 @@ import {
   Zap,
 } from 'lucide-react';
 import { ExtensionMessage, ExtensionResponse } from '../shared/messages';
-import { getDaysToGateCSE, SessionState } from '../shared/types';
+import { getGateCSECountdown, SessionState } from '../shared/types';
 
 export const InterrogateApp: React.FC = () => {
   const [sessionState, setSessionState] = useState<SessionState | null>(null);
   const [view, setView] = useState<'initial' | 'study-search' | 'grill'>('initial');
   const [searchQuery, setSearchQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [gateCountdown, setGateCountdown] = useState(getGateCSECountdown());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setGateCountdown(getGateCSECountdown());
+    }, 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   useEffect(() => {
     if (typeof chrome !== 'undefined' && chrome.runtime) {
@@ -40,8 +48,6 @@ export const InterrogateApp: React.FC = () => {
   const remainingMinutes = sessionState?.remainingMs
     ? Math.max(1, Math.ceil(sessionState.remainingMs / 60000))
     : 20;
-
-  const daysToGate = getDaysToGateCSE();
 
   const handleReturnToStudy = () => {
     setIsSubmitting(true);
@@ -96,7 +102,7 @@ export const InterrogateApp: React.FC = () => {
 
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
             <Calendar className="w-3.5 h-3.5 text-amber-400" />
-            <span>GATE CSE 2027: <strong className="text-amber-400 font-mono">{daysToGate}d</strong></span>
+            <span>GATE CSE 2027: <strong className="text-amber-400 font-mono">{gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m</strong></span>
           </div>
         </div>
 
@@ -246,9 +252,9 @@ export const InterrogateApp: React.FC = () => {
                   <h4 className="text-lg font-extrabold text-white">GATE CSE 2027</h4>
                 </div>
                 <div className="text-right">
-                  <span className="text-xs uppercase tracking-wider font-bold text-zinc-400">Exam Countdown</span>
-                  <div className="text-xl font-black text-amber-400 font-mono">
-                    {daysToGate} DAYS LEFT
+                  <span className="text-xs uppercase tracking-wider font-bold text-zinc-400">Exam Live Countdown</span>
+                  <div className="text-base font-black text-amber-400 font-mono">
+                    {gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m {gateCountdown.seconds}s
                   </div>
                 </div>
               </div>

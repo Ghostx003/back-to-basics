@@ -105,6 +105,33 @@ export function getDaysToGateCSE(currentDate = new Date()): number {
   return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
+export interface GateCountdown {
+  days: number;
+  hours: number;
+  minutes: number;
+  seconds: number;
+  totalMs: number;
+  formatted: string;
+}
+
+/**
+ * Calculates live difference (7 Feb 2027 - current date) with days, hours, minutes, seconds
+ */
+export function getGateCSECountdown(currentDate = new Date()): GateCountdown {
+  const examDate = new Date('2027-02-07T00:00:00');
+  const diffMs = Math.max(0, examDate.getTime() - currentDate.getTime());
+
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  const hours = Math.floor((diffMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+  const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  const seconds = Math.floor((diffMs % (1000 * 60)) / 1000);
+
+  const pad = (n: number) => n.toString().padStart(2, '0');
+  const formatted = `${days} Days : ${pad(hours)} Hours : ${pad(minutes)} Min : ${pad(seconds)} Sec`;
+
+  return { days, hours, minutes, seconds, totalMs: diffMs, formatted };
+}
+
 export interface ExtensionSettings {
   soundEnabled: boolean; // 30-second ticking sound
   pauseOnTabSwitch: boolean; // User-controlled optional feature
