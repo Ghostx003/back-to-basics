@@ -212,9 +212,18 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
         }
 
         case 'SHOW_REOPENED_PROMPT': {
+          const subjectName = message.payload?.subjectName || '';
+          const remainingMinutes = message.payload?.remainingMinutes || 20;
+          const daysToGate = message.payload?.daysToGate || 485;
           navigationGuard.showReopenedPrompt(
+            subjectName,
+            remainingMinutes,
+            daysToGate,
             () => {
-              // User chooses to keep studying
+              // User chooses to keep studying - RESUME TIMER!
+              chrome.runtime.sendMessage<ExtensionMessage>({
+                type: 'RESUME_SESSION',
+              });
             },
             () => {
               // User chooses to quit session

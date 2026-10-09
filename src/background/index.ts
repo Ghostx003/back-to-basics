@@ -385,14 +385,25 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
       if (state.status === 'RunningStudy' || state.status === 'RunningBreak') {
         // Automatically reopen the designated study tab!
         if (state.currentStudyUrl) {
-          const newTabId = await tabsManager.openOrUpdateStudyTab(state.currentStudyUrl);
-          await sessionManager.setManagedTab(newTabId);
+          await sessionManager.pauseForInterrogation();
+          await AlarmsManager.clearDeadlineAlarm();
           broadcastStateUpdate();
 
-          // Display the "YOU ARE NOT DONE YET!" modal
+          const newTabId = await tabsManager.openOrUpdateStudyTab(state.currentStudyUrl);
+          await sessionManager.setManagedTab(newTabId);
+
+          const subjectName = sessionManager.getCurrentSubjectName();
+          const remainingMinutes = Math.max(
+            1,
+            Math.ceil((sessionManager.getState().remainingMs || 0) / 60000)
+          );
+          const daysToGate = getDaysToGateCSE();
+
+          // Display the ruthless taunt modal
           setTimeout(async () => {
             await tabsManager.sendMessageToManagedTab({
               type: 'SHOW_REOPENED_PROMPT',
+              payload: { subjectName, remainingMinutes, daysToGate },
             });
           }, 800);
         }

@@ -154,14 +154,13 @@ export class SessionManager {
    * Resumes study timer with exact remaining time after interrogation concludes.
    */
   public async resumeFromInterrogation(): Promise<SessionState> {
-    if (!this.state.isInterrogating) {
-      return this.state;
-    }
-
     const now = Date.now();
-    const newDeadline = now + this.state.remainingMs;
+    const remaining = this.state.remainingMs > 0 ? this.state.remainingMs : this.state.totalIntervalMs;
+    const newDeadline = now + remaining;
 
     return await this.updateState({
+      status: 'RunningStudy',
+      remainingMs: remaining,
       deadline: newDeadline,
       isInterrogating: false,
     });
@@ -211,16 +210,23 @@ export class SessionManager {
    * Resumes a paused study session. Calculates a fresh deadline.
    */
   public async resume(): Promise<SessionState> {
-    if (this.state.status !== 'PausedStudy') {
+    // Resume allowed if PausedStudy OR if RunningStudy with null deadline or isInterrogating
+    if (
+      this.state.status !== 'PausedStudy' &&
+      !(this.state.status === 'RunningStudy' && (!this.state.deadline || this.state.isInterrogating))
+    ) {
       return this.state;
     }
 
     const now = Date.now();
-    const newDeadline = now + this.state.remainingMs;
+    const remaining = this.state.remainingMs > 0 ? this.state.remainingMs : this.state.totalIntervalMs;
+    const newDeadline = now + remaining;
 
     return await this.updateState({
       status: 'RunningStudy',
+      remainingMs: remaining,
       deadline: newDeadline,
+      isInterrogating: false,
     });
   }
 

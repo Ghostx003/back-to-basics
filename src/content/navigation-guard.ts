@@ -164,15 +164,15 @@ export class NavigationGuard {
         <div class="card" style="border-color: #ef4444; box-shadow: 0 0 50px rgba(239, 68, 68, 0.35);">
           <div class="header">
             <div class="badge" style="background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); color: #ef4444;">🚨</div>
-            <h2 class="title" style="color: #ef4444;">WHAT ARE YOU DOING?!</h2>
+            <h2 class="title" style="color: #ef4444;">WHAT ARE YOU DOING?! HAVE SOME SHAME!</h2>
           </div>
           <p class="desc" style="color: #e4e4e7; font-weight: 500;">
-            This link does NOT match your designated study material! What are you doing?
+            What are you doing clicking off your study material?! Your exam is on 7 February 2027! Have some shame!
           </p>
           <div class="url-box" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">${displayDomain}</div>
           <div class="btn-group">
             <button id="reject-btn" class="btn btn-redirect" type="button" style="background-color: #dc2626; color: #ffffff;">
-              2. Sorry I was being distracted (Take me back)
+              2. Sorry I was being distracted (Take me back to study)
             </button>
             <button id="approve-btn" class="btn btn-resource" type="button" style="background-color: #18181b; border-color: #3f3f46; color: #d4d4d8;">
               1. I am just watching resources related to subject
@@ -312,9 +312,17 @@ export class NavigationGuard {
   /**
    * Prompts when the user closed the designated study tab.
    */
-  public showReopenedPrompt(onContinue: () => void, onQuit: () => void) {
+  public showReopenedPrompt(
+    subjectName: string,
+    remainingMinutes: number,
+    daysToGate: number,
+    onContinue: () => void,
+    onQuit: () => void
+  ) {
     this.ensureContainer();
     if (!this.shadow) return;
+
+    const targetSubject = subjectName ? subjectName : 'your studies';
 
     this.shadow.innerHTML = `
       <style>
@@ -330,8 +338,8 @@ export class NavigationGuard {
           left: 0;
           width: 100vw;
           height: 100vh;
-          background-color: rgba(0, 0, 0, 0.85);
-          backdrop-filter: blur(8px);
+          background-color: rgba(0, 0, 0, 0.92);
+          backdrop-filter: blur(10px);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -340,57 +348,79 @@ export class NavigationGuard {
         }
         .card {
           background-color: #121215;
-          border: 1px solid #f59e0b;
-          border-radius: 1rem;
-          padding: 2rem;
-          max-width: 460px;
+          border: 2px solid #ef4444;
+          border-radius: 1.25rem;
+          padding: 2.25rem;
+          max-width: 520px;
           width: 100%;
-          box-shadow: 0 0 40px rgba(245, 158, 11, 0.15);
+          box-shadow: 0 0 60px rgba(239, 68, 68, 0.35);
           color: #f4f4f5;
-        }
-        .header {
-          display: flex;
-          align-items: center;
-          gap: 0.85rem;
-          margin-bottom: 1rem;
+          text-align: center;
         }
         .badge {
-          width: 2.75rem;
-          height: 2.75rem;
-          border-radius: 0.75rem;
-          background-color: rgba(245, 158, 11, 0.15);
-          border: 1px solid rgba(245, 158, 11, 0.3);
+          width: 3.5rem;
+          height: 3.5rem;
+          border-radius: 1rem;
+          background-color: rgba(239, 68, 68, 0.2);
+          border: 2px solid rgba(239, 68, 68, 0.5);
           display: flex;
           align-items: center;
           justify-content: center;
-          color: #f59e0b;
-          font-size: 1.3rem;
-          font-weight: bold;
+          color: #ef4444;
+          font-size: 1.75rem;
+          margin: 0 auto 1.25rem;
         }
         .title {
-          font-size: 1.25rem;
-          font-weight: 800;
-          color: #ffffff;
+          font-size: 1.5rem;
+          font-weight: 900;
+          color: #ef4444;
           letter-spacing: -0.01em;
           text-transform: uppercase;
+          margin-bottom: 0.75rem;
         }
-        .desc {
+        .taunt-box {
+          background-color: rgba(239, 68, 68, 0.08);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          border-radius: 0.85rem;
+          padding: 1.25rem;
+          margin-bottom: 1.75rem;
+          text-align: left;
+        }
+        .taunt-title {
+          color: #f87171;
+          font-weight: 800;
+          font-size: 1rem;
+          margin-bottom: 0.5rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          text-transform: uppercase;
+        }
+        .taunt-text {
           font-size: 0.95rem;
-          color: #a1a1aa;
-          line-height: 1.5;
-          margin-bottom: 1.5rem;
+          color: #e4e4e7;
+          line-height: 1.6;
+        }
+        .days-badge {
+          display: inline-block;
+          background-color: rgba(239, 68, 68, 0.25);
+          color: #fca5a5;
+          padding: 0.2rem 0.5rem;
+          border-radius: 0.35rem;
+          font-weight: 800;
+          font-family: monospace;
         }
         .btn-group {
           display: flex;
           flex-direction: column;
-          gap: 0.75rem;
+          gap: 0.85rem;
         }
         .btn {
           appearance: none;
-          padding: 0.85rem 1.15rem;
-          border-radius: 0.625rem;
+          padding: 1rem 1.25rem;
+          border-radius: 0.75rem;
           font-size: 0.95rem;
-          font-weight: 600;
+          font-weight: 700;
           cursor: pointer;
           transition: all 0.15s ease;
           display: flex;
@@ -400,16 +430,19 @@ export class NavigationGuard {
           border: 1px solid transparent;
         }
         .btn-primary {
-          background-color: #6366f1;
+          background-color: #dc2626;
           color: #ffffff;
+          box-shadow: 0 4px 20px rgba(220, 38, 38, 0.35);
         }
         .btn-primary:hover {
-          background-color: #4f46e5;
+          background-color: #b91c1c;
+          transform: translateY(-1px);
         }
         .btn-quit {
           background-color: #18181b;
-          color: #a1a1aa;
+          color: #71717a;
           border-color: #27272a;
+          font-size: 0.85rem;
         }
         .btn-quit:hover {
           background-color: #27272a;
@@ -419,19 +452,26 @@ export class NavigationGuard {
       </style>
       <div class="backdrop">
         <div class="card">
-          <div class="header">
-            <div class="badge">⏳</div>
-            <h2 class="title">YOU ARE NOT DONE YET!</h2>
+          <div class="badge">🚨</div>
+          <h2 class="title">WHAT ARE YOU DOING QUITTING?!</h2>
+          <div class="taunt-box">
+            <div class="taunt-title">⚠️ HAVE SOME SHAME!</div>
+            <p class="taunt-text">
+              What are you doing closing your study tab and quitting?!
+              <br/><br/>
+              <strong>Your exam is on 7 February 2027 (GATE CSE 2027) — ONLY <span class="days-badge">${daysToGate} DAYS LEFT</span>!</strong>
+              <br/><br/>
+              You still have <strong>${remainingMinutes} minutes left</strong> in this interval! While you are slacking and closing tabs, thousands of competitors are grinding past you.
+              <br/><br/>
+              Stop making excuses and get back to studying <strong>${targetSubject}</strong> right now!
+            </p>
           </div>
-          <p class="desc">
-            You closed your designated study tab while your study session was still active. If you really want to close the session, I will let you quit. Otherwise, let's keep studying!
-          </p>
           <div class="btn-group">
             <button id="continue-study-btn" class="btn btn-primary" type="button">
-              Resume Studying
+              🔥 I Have Shame, Resume Studying Now
             </button>
             <button id="quit-session-btn" class="btn btn-quit" type="button">
-              Quit Session
+              Quit Session (Give Up)
             </button>
           </div>
         </div>

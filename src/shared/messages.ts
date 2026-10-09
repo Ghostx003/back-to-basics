@@ -31,7 +31,7 @@ export type ExtensionMessage =
   | { type: 'REQUEST_PAUSE_MEDIA' }
   | { type: 'REQUEST_RESUME_MEDIA' }
   | { type: 'SHOW_BLOCKED_NOTICE'; payload: { blockedUrl: string } }
-  | { type: 'SHOW_REOPENED_PROMPT' }
+  | { type: 'SHOW_REOPENED_PROMPT'; payload?: { subjectName?: string; remainingMinutes?: number; daysToGate?: number } }
   | { type: 'SHOW_INTERROGATION_PROMPT'; payload: { subjectName: string; remainingMinutes: number; daysToGate: number } }
   | { type: 'SHOW_STRIKE_WARNING'; payload: { strike: number; message: string; isFinalCountdown?: boolean } }
   | { type: 'INTERROGATION_A_CHOSEN'; payload?: { url?: string } }

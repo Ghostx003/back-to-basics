@@ -202,5 +202,36 @@ describe('Interrogation, 3-Strike Enforcement & Productivity Analytics', () => {
     expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Linux', designatedUrl)).toBe(false);
     expect(isExactSameStudyUrl('https://youtube.com', designatedUrl)).toBe(false);
   });
+
+  it('resume() restores valid deadline and resumes clock countdown after prompt or interrogation pause', async () => {
+    const sessionManager = new SessionManager();
+    const subjects: PomodoroSubject[] = [
+      {
+        id: 'p1',
+        name: 'Operating Systems',
+        url: 'https://en.wikipedia.org/wiki/Operating_system',
+        studyDurationMinutes: 25,
+        breakDurationMinutes: 5,
+        sessions: 1,
+      },
+    ];
+
+    await sessionManager.startPomodoro(subjects, 301);
+    expect(sessionManager.getState().status).toBe('RunningStudy');
+    expect(sessionManager.getState().deadline).not.toBeNull();
+
+    // Prompt pauses for interrogation
+    await sessionManager.pauseForInterrogation();
+    expect(sessionManager.getState().status).toBe('RunningStudy');
+    expect(sessionManager.getState().deadline).toBeNull();
+    expect(sessionManager.getState().isInterrogating).toBe(true);
+
+    // Clicking resume must restore deadline and unpause clock
+    const resumed = await sessionManager.resume();
+    expect(resumed.status).toBe('RunningStudy');
+    expect(resumed.deadline).not.toBeNull();
+    expect(resumed.deadline).toBeGreaterThan(Date.now());
+    expect(resumed.isInterrogating).toBe(false);
+  });
 });
 

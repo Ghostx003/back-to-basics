@@ -42,7 +42,7 @@ export const ActiveSessionView: React.FC<ActiveSessionViewProps> = ({
       }, 500);
       return () => clearInterval(interval);
     }
-  }, [session.status]);
+  }, [session.status, session.deadline]);
 
   const isRunning = session.status === 'RunningStudy';
   const isPaused = session.status === 'PausedStudy';

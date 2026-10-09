@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Activity,
   ArrowRight,
@@ -43,6 +43,17 @@ export const LiveMonitorView: React.FC<LiveMonitorViewProps> = ({
 }) => {
   const [showResetModal, setShowResetModal] = useState(false);
   const [showQuitModal, setShowQuitModal] = useState(false);
+  const [now, setNow] = useState(Date.now());
+
+  // Smooth 500ms ticker for active countdown
+  useEffect(() => {
+    if (session.status === 'RunningStudy' || session.status === 'RunningBreak') {
+      const interval = setInterval(() => {
+        setNow(Date.now());
+      }, 500);
+      return () => clearInterval(interval);
+    }
+  }, [session.status, session.deadline]);
 
   const isSessionActive =
     session.status === 'RunningStudy' ||
@@ -50,10 +61,19 @@ export const LiveMonitorView: React.FC<LiveMonitorViewProps> = ({
     session.status === 'RunningBreak' ||
     session.status === 'Completed';
 
+  // Calculate live remaining ms based on deadline
+  let liveRemainingMs = session.remainingMs || 0;
+  if (
+    (session.status === 'RunningStudy' || session.status === 'RunningBreak') &&
+    session.deadline
+  ) {
+    liveRemainingMs = Math.max(0, session.deadline - now);
+  }
+
   // Progress percentage
   const calculateProgress = () => {
     if (!session.totalIntervalMs || session.totalIntervalMs <= 0) return 0;
-    const elapsed = session.totalIntervalMs - (session.remainingMs || 0);
+    const elapsed = session.totalIntervalMs - liveRemainingMs;
     return Math.min(100, Math.max(0, (elapsed / session.totalIntervalMs) * 100));
   };
 
@@ -241,7 +261,7 @@ export const LiveMonitorView: React.FC<LiveMonitorViewProps> = ({
         {/* Left Column: Big Circular Countdown */}
         <Card variant="elevated" className="p-6 md:col-span-1 flex flex-col items-center justify-center text-center space-y-4">
           <CircularProgress
-            remainingMs={session.remainingMs || 0}
+            remainingMs={liveRemainingMs}
             totalMs={session.totalIntervalMs || 1}
             size={180}
             strokeWidth={10}
