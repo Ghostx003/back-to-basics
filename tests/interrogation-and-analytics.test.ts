@@ -2,7 +2,11 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { SessionManager } from '../src/background/session-manager';
 import { TabsManager } from '../src/background/tabs-manager';
 import { isBlockedUrl } from '../src/shared/blocklist';
-import { getDaysToGateCSE, PomodoroSubject } from '../src/shared/types';
+import {
+  getDaysToGateCSE,
+  isExactSameStudyUrl,
+  PomodoroSubject,
+} from '../src/shared/types';
 import { ExtensionStorage } from '../src/storage/storage';
 
 describe('Interrogation, 3-Strike Enforcement & Productivity Analytics', () => {
@@ -181,6 +185,22 @@ describe('Interrogation, 3-Strike Enforcement & Productivity Analytics', () => {
     const updated = await sessionManager.approveNavigation('https://geeksforgeeks.org/sql-joins');
     expect(updated.approvedUrls).toContain('https://geeksforgeeks.org/sql-joins');
     expect(updated.currentStudyUrl).toBe('https://geeksforgeeks.org/sql-joins');
+  });
+
+  it('enforces exact study URL matching (Operating_system vs Supercomputer)', () => {
+    const designatedUrl = 'https://en.wikipedia.org/wiki/Operating_system';
+
+    // 1. Current == designated link given in the beginning: NO questions asked
+    expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Operating_system', designatedUrl)).toBe(true);
+    expect(isExactSameStudyUrl('http://en.wikipedia.org/wiki/Operating_system', designatedUrl)).toBe(true);
+    expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Operating_system/', designatedUrl)).toBe(true);
+    // In-page section anchor on same designated article: NO questions asked
+    expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Operating_system#History', designatedUrl)).toBe(true);
+
+    // 2. Current link != designated link (even on same domain like Supercomputer): MUST ASK
+    expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Supercomputer', designatedUrl)).toBe(false);
+    expect(isExactSameStudyUrl('https://en.wikipedia.org/wiki/Linux', designatedUrl)).toBe(false);
+    expect(isExactSameStudyUrl('https://youtube.com', designatedUrl)).toBe(false);
   });
 });
 

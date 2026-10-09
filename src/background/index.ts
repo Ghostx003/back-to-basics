@@ -1,6 +1,6 @@
 import { isBlockedUrl } from '../shared/blocklist';
 import { ExtensionMessage, ExtensionResponse } from '../shared/messages';
-import { getDaysToGateCSE } from '../shared/types';
+import { getDaysToGateCSE, isExactSameStudyUrl } from '../shared/types';
 import { ExtensionStorage } from '../storage/storage';
 import { AlarmsManager, DEADLINE_ALARM_NAME } from './alarms';
 import { SessionManager } from './session-manager';
@@ -118,14 +118,6 @@ if (typeof chrome !== 'undefined' && chrome.alarms) {
   });
 }
 
-function normalizeHost(urlStr: string): string {
-  try {
-    return new URL(urlStr).hostname.toLowerCase().replace(/^www\./, '');
-  } catch {
-    return '';
-  }
-}
-
 function isUrlApprovedOrStudy(
   candidateUrl: string | undefined | null,
   currentStudyUrl: string | undefined | null,
@@ -142,32 +134,14 @@ function isUrlApprovedOrStudy(
     return true;
   }
 
-  if (currentStudyUrl && candidateUrl === currentStudyUrl) return true;
-
-  const candidateHost = normalizeHost(candidateUrl);
-  if (!candidateHost) return false;
-
-  if (currentStudyUrl) {
-    const studyHost = normalizeHost(currentStudyUrl);
-    if (
-      studyHost &&
-      (candidateHost === studyHost ||
-        candidateHost.endsWith('.' + studyHost) ||
-        studyHost.endsWith('.' + candidateHost))
-    ) {
-      return true;
-    }
+  // Exact match with designated study URL given in the beginning
+  if (currentStudyUrl && isExactSameStudyUrl(candidateUrl, currentStudyUrl)) {
+    return true;
   }
 
+  // Exact match with an explicitly approved URL
   for (const approved of approvedUrls) {
-    if (candidateUrl === approved) return true;
-    const approvedHost = normalizeHost(approved);
-    if (
-      approvedHost &&
-      (candidateHost === approvedHost ||
-        candidateHost.endsWith('.' + approvedHost) ||
-        approvedHost.endsWith('.' + candidateHost))
-    ) {
+    if (isExactSameStudyUrl(candidateUrl, approved)) {
       return true;
     }
   }

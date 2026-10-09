@@ -136,3 +136,31 @@ export const INITIAL_SESSION_STATE: SessionState = {
   violationCount: 0,
   isInterrogating: false,
 };
+
+/**
+ * Normalizes a URL by lowercasing hostname, removing protocol (http/https),
+ * removing trailing slashes, and stripping fragment hashes (so table-of-contents
+ * or in-page anchor scrolling on the exact same article doesn't trigger false alarms).
+ */
+export function stripUrlProtocolAndFragment(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    let path = u.pathname.replace(/\/+$/, '');
+    return `${u.host.toLowerCase()}${path}${u.search}`;
+  } catch {
+    return urlStr.replace(/^https?:\/\//i, '').split('#')[0].trim().toLowerCase().replace(/\/+$/, '');
+  }
+}
+
+/**
+ * Checks if a candidate URL matches the designated study URL.
+ * Only returns true if the pathname and query point to the EXACT same designated resource.
+ */
+export function isExactSameStudyUrl(
+  candidateUrl: string | undefined | null,
+  designatedStudyUrl: string | undefined | null
+): boolean {
+  if (!candidateUrl || !designatedStudyUrl) return false;
+  return stripUrlProtocolAndFragment(candidateUrl) === stripUrlProtocolAndFragment(designatedStudyUrl);
+}
+

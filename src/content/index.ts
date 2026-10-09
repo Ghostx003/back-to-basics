@@ -1,5 +1,5 @@
 import { ExtensionMessage, ExtensionResponse } from '../shared/messages';
-import { ExtensionSettings, SessionState } from '../shared/types';
+import { ExtensionSettings, isExactSameStudyUrl, SessionState } from '../shared/types';
 import { BreakOverlay } from './break-overlay';
 import { NavigationGuard } from './navigation-guard';
 import { TickerSound } from './ticker';
@@ -61,7 +61,7 @@ if (checkIntervalId === null) {
   checkIntervalId = window.setInterval(checkTickingStatus, 1000);
 }
 
-// Aggressive link interceptor: grill user if any unapproved link is clicked during study session
+// Aggressive link interceptor: grill user if ANY link clicked does not equal the designated study URL
 if (typeof document !== 'undefined') {
   document.addEventListener('click', (event) => {
     if (!currentSessionState || currentSessionState.status !== 'RunningStudy') {
@@ -84,39 +84,29 @@ if (typeof document !== 'undefined') {
     }
 
     try {
-      const currentHost = window.location.hostname.toLowerCase().replace(/^www\./, '');
-      const targetHost = new URL(href).hostname.toLowerCase().replace(/^www\./, '');
-
-      // If navigation is within same host/domain, allow
+      // 1. If clicking an anchor or section on the SAME exact designated page, allow without questioning
       if (
-        targetHost === currentHost ||
-        targetHost.endsWith('.' + currentHost) ||
-        currentHost.endsWith('.' + targetHost)
+        currentSessionState.currentStudyUrl &&
+        isExactSameStudyUrl(href, currentSessionState.currentStudyUrl)
       ) {
         return;
       }
 
-      // Check if target is already approved
-      const isApproved = currentSessionState.approvedUrls.some((u) => {
-        try {
-          const approvedHost = new URL(u).hostname.toLowerCase().replace(/^www\./, '');
-          return (
-            targetHost === approvedHost ||
-            targetHost.endsWith('.' + approvedHost) ||
-            approvedHost.endsWith('.' + targetHost)
-          );
-        } catch {
-          return false;
-        }
-      });
-
+      // 2. If clicking an already approved link, allow without questioning
+      const isApproved = currentSessionState.approvedUrls.some((u) =>
+        isExactSameStudyUrl(href, u)
+      );
       if (isApproved) {
         return;
       }
 
-      // Intercept and grill!
+      // 3. Current link is NOT equal to the link given in the beginning and not approved!
+      // Intercept immediately, pause timer, and grill the user!
       event.preventDefault();
       event.stopPropagation();
+
+      // Pause timer immediately
+      chrome.runtime.sendMessage<ExtensionMessage>({ type: 'PAUSE_SESSION' });
 
       navigationGuard.showPrompt(
         href,
@@ -125,11 +115,14 @@ if (typeof document !== 'undefined') {
             type: 'APPROVE_NAVIGATION',
             payload: { url: approvedUrl },
           });
+          chrome.runtime.sendMessage<ExtensionMessage>({
+            type: 'RESUME_SESSION',
+          });
           window.location.href = approvedUrl;
         },
         () => {
           chrome.runtime.sendMessage<ExtensionMessage>({
-            type: 'REJECT_NAVIGATION',
+            type: 'RESUME_SESSION',
           });
         }
       );

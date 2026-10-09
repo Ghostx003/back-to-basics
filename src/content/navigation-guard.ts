@@ -161,20 +161,20 @@ export class NavigationGuard {
         }
       </style>
       <div class="backdrop">
-        <div class="card">
+        <div class="card" style="border-color: #ef4444; box-shadow: 0 0 50px rgba(239, 68, 68, 0.35);">
           <div class="header">
-            <div class="badge">⚠️</div>
-            <h2 class="title">WHAT ARE YOU DOING?</h2>
+            <div class="badge" style="background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); color: #ef4444;">🚨</div>
+            <h2 class="title" style="color: #ef4444;">WHAT ARE YOU DOING?!</h2>
           </div>
-          <p class="desc">
-            You opened a page outside your designated study curriculum. Stay accountable:
+          <p class="desc" style="color: #e4e4e7; font-weight: 500;">
+            This link does NOT match your designated study material! What are you doing?
           </p>
-          <div class="url-box">${displayDomain}</div>
+          <div class="url-box" style="border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">${displayDomain}</div>
           <div class="btn-group">
-            <button id="reject-btn" class="btn btn-redirect" type="button">
-              2. Sorry, I was being distracted (Take me back)
+            <button id="reject-btn" class="btn btn-redirect" type="button" style="background-color: #dc2626; color: #ffffff;">
+              2. Sorry I was being distracted (Take me back)
             </button>
-            <button id="approve-btn" class="btn btn-resource" type="button">
+            <button id="approve-btn" class="btn btn-resource" type="button" style="background-color: #18181b; border-color: #3f3f46; color: #d4d4d8;">
               1. I am just watching resources related to subject
             </button>
           </div>
