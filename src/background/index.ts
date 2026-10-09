@@ -1,3 +1,4 @@
+import { isBlockedUrl } from '../shared/blocklist';
 import { ExtensionMessage, ExtensionResponse } from '../shared/messages';
 import { ExtensionStorage } from '../storage/storage';
 import { AlarmsManager, DEADLINE_ALARM_NAME } from './alarms';
@@ -106,7 +107,7 @@ if (typeof chrome !== 'undefined' && chrome.alarms) {
  */
 if (typeof chrome !== 'undefined' && chrome.tabs) {
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
-    if (tabId !== tabsManager.getManagedTabId() || !changeInfo.url) {
+    if (!changeInfo.url) {
       return;
     }
 
@@ -117,41 +118,100 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
 
     const newUrl = changeInfo.url;
     // Don't monitor internal browser schemes or about:blank
-    if (newUrl.startsWith('chrome://') || newUrl.startsWith('chrome-extension://') || newUrl === 'about:blank') {
+    if (
+      newUrl.startsWith('chrome://') ||
+      newUrl.startsWith('chrome-extension://') ||
+      newUrl.startsWith('brave://') ||
+      newUrl.startsWith('edge://') ||
+      newUrl === 'about:blank'
+    ) {
       return;
     }
 
-    // Check if new URL is already approved or same origin/domain
-    const isApproved = state.approvedUrls.some((u) => {
-      try {
-        const u1 = new URL(u);
-        const u2 = new URL(newUrl);
-        return u1.origin === u2.origin;
-      } catch {
-        return false;
+    // 1. Aggressively intercept blocklisted websites (Netflix, Reddit, X.com, adult sites)
+    if (isBlockedUrl(newUrl)) {
+      if (state.currentStudyUrl) {
+        await chrome.tabs.update(tabId, { url: state.currentStudyUrl });
+        setTimeout(async () => {
+          await chrome.tabs.sendMessage(tabId, {
+            type: 'SHOW_BLOCKED_NOTICE',
+            payload: { blockedUrl: newUrl },
+          }).catch(() => {});
+        }, 500);
+      } else {
+        await chrome.tabs.remove(tabId).catch(() => {});
       }
-    });
+      return;
+    }
 
-    if (isApproved) {
-      await sessionManager.approveNavigation(newUrl);
-      broadcastStateUpdate();
-    } else {
-      // Unexpected navigation! Set pending and notify content script
-      await sessionManager.setPendingNavigation(newUrl);
-      broadcastStateUpdate();
-      await tabsManager.sendMessageToManagedTab({
-        type: 'CHECK_NAVIGATION_PERMISSION',
-        payload: { url: newUrl },
+    // 2. Check if this is the managed study tab
+    if (tabId === tabsManager.getManagedTabId()) {
+      const isApproved = state.approvedUrls.some((u) => {
+        try {
+          return new URL(u).origin === new URL(newUrl).origin;
+        } catch {
+          return false;
+        }
       });
+
+      if (isApproved) {
+        await sessionManager.approveNavigation(newUrl);
+        broadcastStateUpdate();
+      } else {
+        // Unexpected navigation! Set pending and notify content script
+        await sessionManager.setPendingNavigation(newUrl);
+        broadcastStateUpdate();
+        await tabsManager.sendMessageToManagedTab({
+          type: 'CHECK_NAVIGATION_PERMISSION',
+          payload: { url: newUrl },
+        });
+      }
+    } else {
+      // 3. User opened a new tab or navigated outside the managed study tab!
+      // Ask: "WHAT ARE YOU DOING?"
+      const isApproved = state.approvedUrls.some((u) => {
+        try {
+          return new URL(u).origin === new URL(newUrl).origin;
+        } catch {
+          return false;
+        }
+      });
+
+      if (!isApproved) {
+        setTimeout(async () => {
+          await chrome.tabs.sendMessage(tabId, {
+            type: 'CHECK_NAVIGATION_PERMISSION',
+            payload: { url: newUrl },
+          }).catch(() => {});
+        }, 600);
+      }
     }
   });
 
-  // Handle managed tab closure gracefully
+  // Handle managed tab closure:
+  // "AND IF I CLOSE THE DESGNATED WEBSITE OF STUDY IT WILL ASK ME YOU ARE NOT DONE YET AND RE OPEN THE TAB AND SAY IF YOU WANNA CLSOE TEH SESSION I WILL LET YOU QUIT"
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     if (tabId === tabsManager.getManagedTabId()) {
-      tabsManager.setManagedTabId(null);
-      await sessionManager.setManagedTab(null);
-      broadcastStateUpdate();
+      const state = sessionManager.getState();
+      if (state.status === 'RunningStudy' || state.status === 'RunningBreak') {
+        // Automatically reopen the designated study tab!
+        if (state.currentStudyUrl) {
+          const newTabId = await tabsManager.openOrUpdateStudyTab(state.currentStudyUrl);
+          await sessionManager.setManagedTab(newTabId);
+          broadcastStateUpdate();
+
+          // Display the "YOU ARE NOT DONE YET!" modal
+          setTimeout(async () => {
+            await tabsManager.sendMessageToManagedTab({
+              type: 'SHOW_REOPENED_PROMPT',
+            });
+          }, 800);
+        }
+      } else {
+        tabsManager.setManagedTabId(null);
+        await sessionManager.setManagedTab(null);
+        broadcastStateUpdate();
+      }
     }
   });
 }
@@ -286,6 +346,14 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
                 await tabsManager.openOrUpdateStudyTab(state.currentStudyUrl);
               }
               await sessionManager.setPendingNavigation(null);
+              broadcastStateUpdate();
+              sendResponse({ success: true, data: state });
+              break;
+            }
+
+            case 'QUIT_SESSION': {
+              await AlarmsManager.clearDeadlineAlarm();
+              const state = await sessionManager.quitSession();
               broadcastStateUpdate();
               sendResponse({ success: true, data: state });
               break;

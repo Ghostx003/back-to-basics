@@ -10,8 +10,10 @@ export class SessionManager {
   private state: SessionState = { ...INITIAL_SESSION_STATE };
   private onStateChangeCallbacks: Array<(state: SessionState) => void> = [];
 
+  private initPromise: Promise<SessionState>;
+
   constructor() {
-    this.loadInitialState();
+    this.initPromise = this.loadInitialState();
   }
 
   public async loadInitialState(): Promise<SessionState> {
@@ -31,6 +33,7 @@ export class SessionManager {
   }
 
   private async updateState(patch: Partial<SessionState>): Promise<SessionState> {
+    await this.initPromise;
     this.state = {
       ...this.state,
       ...patch,
@@ -428,6 +431,20 @@ export class SessionManager {
   public async setMediaPlayingState(isPlaying: boolean): Promise<void> {
     await this.updateState({
       wasMediaPlayingBeforeBreak: isPlaying,
+    });
+  }
+
+  public async quitSession(): Promise<SessionState> {
+    return await this.updateState({
+      status: 'Idle',
+      deadline: null,
+      remainingMs: 0,
+      totalIntervalMs: 0,
+      managedTabId: null,
+      currentStudyUrl: null,
+      pendingNavigationUrl: null,
+      startedAt: null,
+      completedAt: null,
     });
   }
 }

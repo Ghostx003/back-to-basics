@@ -30,6 +30,9 @@ export type ExtensionMessage =
   | { type: 'CHECK_NAVIGATION_PERMISSION'; payload: { url: string } }
   | { type: 'REQUEST_PAUSE_MEDIA' }
   | { type: 'REQUEST_RESUME_MEDIA' }
+  | { type: 'SHOW_BLOCKED_NOTICE'; payload: { blockedUrl: string } }
+  | { type: 'SHOW_REOPENED_PROMPT' }
+  | { type: 'QUIT_SESSION' }
   | { type: 'CONTENT_SCRIPT_PING' };
 
 export type ExtensionResponse<T = unknown> = {

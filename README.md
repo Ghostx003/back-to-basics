@@ -25,9 +25,11 @@ Back to Basics gives users a way to prepare their study schedule in advance and 
 
 - **Automated Lesson Transitions**: Seamlessly closes the active study tab and launches the next lesson when duration ends.
 - **Dual Study Modes**: Scheduled Study for multi-subject syllabi and Pomodoro Mode for focused work/break intervals.
+- **Aggressive Distraction & Adult Site Blocker**: Built-in blocklist covering Netflix, Reddit, X.com/Twitter, Instagram, TikTok, YouTube Shorts, and 450+ adult/dirty sites. Instantly blocks and redirects back to study materials.
+- **Interactive Accountability Interception**: When opening new unapproved tabs or links, prompts: *"WHAT ARE YOU DOING?"* with options to declare study relevance or admit distraction and return immediately.
+- **Study Tab Closure Protection**: If the designated study tab is closed during an active session, automatically reopens it with: *"YOU ARE NOT DONE YET! If you want to close the session, I will let you quit."*
 - **Enforced Full-Page Break Overlay**: Full-page dark overlay with circular and digital countdowns to ensure true visual rest.
 - **Intelligent Media Control**: Automatically pauses video playback during breaks and attempts to resume it afterwards.
-- **Distraction & Navigation Guard**: Distinguishes between internal study navigation and unrelated browsing, offering quick return actions.
 - **Deadline-Based Timing**: Reliable, drift-free countdowns backed by Chrome alarms that survive service worker suspension and browser restarts.
 - **Final 30-Second Ticking Sound**: Subtle mechanical clock tick synthesized in real time via the Web Audio API with zero external audio assets.
 - **Privacy & Local Operation**: 100% local operation with zero tracking, analytics, subscriptions, or external servers.

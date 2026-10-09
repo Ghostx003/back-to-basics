@@ -128,6 +128,35 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           sendResponse({ success: true });
           break;
         }
+
+        case 'SHOW_BLOCKED_NOTICE': {
+          navigationGuard.showBlockedNotice(
+            message.payload.blockedUrl,
+            () => {
+              chrome.runtime.sendMessage<ExtensionMessage>({
+                type: 'REJECT_NAVIGATION',
+              });
+            }
+          );
+          sendResponse({ success: true });
+          break;
+        }
+
+        case 'SHOW_REOPENED_PROMPT': {
+          navigationGuard.showReopenedPrompt(
+            () => {
+              // User chooses to keep studying
+            },
+            () => {
+              // User chooses to quit session
+              chrome.runtime.sendMessage<ExtensionMessage>({
+                type: 'QUIT_SESSION',
+              });
+            }
+          );
+          sendResponse({ success: true });
+          break;
+        }
       }
       return false;
     }
