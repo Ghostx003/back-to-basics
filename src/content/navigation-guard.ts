@@ -604,37 +604,37 @@ export class NavigationGuard {
       <div class="backdrop">
         <div id="initial-card" class="card">
           <div class="header">
-            <div class="badge">🎯</div>
-            <h2 class="title">Hey, what are you opening this tab for?</h2>
+            <div class="badge" style="background-color: rgba(239, 68, 68, 0.2); border-color: rgba(239, 68, 68, 0.5); color: #ef4444;">🚨</div>
+            <h2 class="title" style="color: #ef4444;">HALT! WHAT ARE YOU OPENING THIS TAB FOR?!</h2>
           </div>
-          <p class="desc">
-            Your study session is currently running. We paused the timer so you can declare your intention.
+          <p class="desc" style="color: #e4e4e7; font-weight: 500;">
+            ATTENTION: An active study session is in progress! Your timer is <strong>FROZEN</strong>. Declare your intention immediately:
           </p>
           <div class="btn-group">
             <button id="btn-choice-a" class="btn btn-a" type="button">
               (A) I'm only looking for study-related content
             </button>
-            <button id="btn-choice-b" class="btn btn-b" type="button">
-              (B) I'm bored and need a break
+            <button id="btn-choice-b" class="btn btn-b" type="button" style="background-color: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.4); color: #fca5a5;">
+              (B) I was being distracted / I'm bored and need a break
             </button>
           </div>
         </div>
 
-        <div id="motive-card" class="card" style="display: none;">
-          <div class="motive-box">
-            <div class="motive-title">
-              <span>⏳</span> Remember Why You Started
+        <div id="motive-card" class="card" style="display: none; border-color: #ef4444; box-shadow: 0 0 60px rgba(239, 68, 68, 0.3);">
+          <div class="motive-box" style="border-color: #ef4444; background-color: rgba(239, 68, 68, 0.08);">
+            <div class="motive-title" style="color: #ef4444;">
+              <span>🚨</span> REMEMBER WHY YOU STARTED!
             </div>
             <p class="motive-text">
               You still have <strong>${remainingMinutes} minutes</strong> left in this interval!
               <br/><br/>
-              <strong>GATE CSE is on 7 February 2027.</strong> Only <span class="gate-badge">${daysToGate} days left</span>.
+              <strong>GATE CSE is on 7 February 2027.</strong> Only <span class="gate-badge" style="background-color: rgba(239, 68, 68, 0.25); color: #fca5a5; font-size: 1rem;">${daysToGate} DAYS LEFT</span>.
               <br/><br/>
-              Every minute counts toward your score. Get back to <strong>${targetSubject}</strong>!
+              Every second you waste right now is a rank lost. Stop making excuses and get back to <strong>${targetSubject}</strong> IMMEDIATELY!
             </p>
           </div>
-          <button id="btn-motive-return" class="btn btn-a" style="justify-content: center; width: 100%;" type="button">
-            Return to Study Session
+          <button id="btn-motive-return" class="btn" style="justify-content: center; width: 100%; background-color: #dc2626; color: #ffffff;" type="button">
+            🔥 Return to Study Session Now
           </button>
         </div>
       </div>

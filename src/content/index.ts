@@ -61,6 +61,82 @@ if (checkIntervalId === null) {
   checkIntervalId = window.setInterval(checkTickingStatus, 1000);
 }
 
+// Aggressive link interceptor: grill user if any unapproved link is clicked during study session
+if (typeof document !== 'undefined') {
+  document.addEventListener('click', (event) => {
+    if (!currentSessionState || currentSessionState.status !== 'RunningStudy') {
+      return;
+    }
+
+    const anchor = (event.target as HTMLElement)?.closest('a');
+    if (!anchor || !anchor.href) {
+      return;
+    }
+
+    const href = anchor.href;
+    if (
+      href.startsWith('javascript:') ||
+      href.startsWith('#') ||
+      href === window.location.href ||
+      href.startsWith('chrome-extension://')
+    ) {
+      return;
+    }
+
+    try {
+      const currentHost = window.location.hostname.toLowerCase().replace(/^www\./, '');
+      const targetHost = new URL(href).hostname.toLowerCase().replace(/^www\./, '');
+
+      // If navigation is within same host/domain, allow
+      if (
+        targetHost === currentHost ||
+        targetHost.endsWith('.' + currentHost) ||
+        currentHost.endsWith('.' + targetHost)
+      ) {
+        return;
+      }
+
+      // Check if target is already approved
+      const isApproved = currentSessionState.approvedUrls.some((u) => {
+        try {
+          const approvedHost = new URL(u).hostname.toLowerCase().replace(/^www\./, '');
+          return (
+            targetHost === approvedHost ||
+            targetHost.endsWith('.' + approvedHost) ||
+            approvedHost.endsWith('.' + targetHost)
+          );
+        } catch {
+          return false;
+        }
+      });
+
+      if (isApproved) {
+        return;
+      }
+
+      // Intercept and grill!
+      event.preventDefault();
+      event.stopPropagation();
+
+      navigationGuard.showPrompt(
+        href,
+        (approvedUrl) => {
+          chrome.runtime.sendMessage<ExtensionMessage>({
+            type: 'APPROVE_NAVIGATION',
+            payload: { url: approvedUrl },
+          });
+          window.location.href = approvedUrl;
+        },
+        () => {
+          chrome.runtime.sendMessage<ExtensionMessage>({
+            type: 'REJECT_NAVIGATION',
+          });
+        }
+      );
+    } catch {}
+  }, true);
+}
+
 // Request initial state and settings from background
 if (typeof chrome !== 'undefined' && chrome.runtime) {
   chrome.runtime.sendMessage<ExtensionMessage, ExtensionResponse<SessionState>>(

@@ -2,6 +2,9 @@ import { ExtensionMessage } from '../shared/messages';
 
 export class TabsManager {
   private managedTabId: number | null = null;
+  private designatedTabIds = new Set<number>();
+  private isOpeningDesignated = false;
+  private designatedOpeningTimeout: any = null;
 
   public getManagedTabId(): number | null {
     return this.managedTabId;
@@ -9,6 +12,38 @@ export class TabsManager {
 
   public setManagedTabId(tabId: number | null): void {
     this.managedTabId = tabId;
+    if (tabId !== null) {
+      this.designatedTabIds.add(tabId);
+    }
+  }
+
+  public isOpeningDesignatedTab(): boolean {
+    return this.isOpeningDesignated;
+  }
+
+  public setOpeningDesignated(val: boolean, durationMs = 3000): void {
+    this.isOpeningDesignated = val;
+    if (this.designatedOpeningTimeout) {
+      clearTimeout(this.designatedOpeningTimeout);
+      this.designatedOpeningTimeout = null;
+    }
+    if (val) {
+      this.designatedOpeningTimeout = setTimeout(() => {
+        this.isOpeningDesignated = false;
+      }, durationMs);
+    }
+  }
+
+  public isDesignatedTab(tabId: number): boolean {
+    return this.managedTabId === tabId || this.designatedTabIds.has(tabId);
+  }
+
+  public markDesignatedTab(tabId: number): void {
+    this.designatedTabIds.add(tabId);
+  }
+
+  public unmarkDesignatedTab(tabId: number): void {
+    this.designatedTabIds.delete(tabId);
   }
 
   /**
@@ -16,6 +51,7 @@ export class TabsManager {
    * If managed tab is still open, navigates it. Otherwise opens a new tab.
    */
   public async openOrUpdateStudyTab(url: string): Promise<number> {
+    this.setOpeningDesignated(true, 3500);
     if (typeof chrome === 'undefined' || !chrome.tabs) {
       return 1; // test environment dummy id
     }
@@ -25,6 +61,7 @@ export class TabsManager {
         const existingTab = await chrome.tabs.get(this.managedTabId);
         if (existingTab && existingTab.id) {
           await chrome.tabs.update(existingTab.id, { url, active: true });
+          this.markDesignatedTab(existingTab.id);
           return existingTab.id;
         }
       } catch {
@@ -37,6 +74,7 @@ export class TabsManager {
       throw new Error('Failed to create managed study tab.');
     }
     this.managedTabId = newTab.id;
+    this.markDesignatedTab(newTab.id);
     return newTab.id;
   }
 

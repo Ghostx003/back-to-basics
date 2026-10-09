@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { SessionManager } from '../src/background/session-manager';
+import { TabsManager } from '../src/background/tabs-manager';
 import { isBlockedUrl } from '../src/shared/blocklist';
 import { getDaysToGateCSE, PomodoroSubject } from '../src/shared/types';
 import { ExtensionStorage } from '../src/storage/storage';
@@ -145,4 +146,41 @@ describe('Interrogation, 3-Strike Enforcement & Productivity Analytics', () => {
     expect(analytics.totalSecondsStudied).toBe(0);
     expect(analytics.sessions).toHaveLength(0);
   });
+
+  it('TabsManager correctly marks and protects designated study tabs from interrogation on launch', async () => {
+    const tabsManager = new TabsManager();
+    expect(tabsManager.isOpeningDesignatedTab()).toBe(false);
+
+    // Opening study tab marks designated tab and sets active opening flag
+    const tabId = await tabsManager.openOrUpdateStudyTab('https://nptel.ac.in/courses/106106');
+    expect(tabsManager.isOpeningDesignatedTab()).toBe(true);
+    expect(tabsManager.isDesignatedTab(tabId)).toBe(true);
+    expect(tabsManager.getManagedTabId()).toBe(tabId);
+
+    // Other random tabs are not designated
+    expect(tabsManager.isDesignatedTab(9999)).toBe(false);
+  });
+
+  it('approves navigation when Choice A study resource is confirmed', async () => {
+    const sessionManager = new SessionManager();
+    const subjects: PomodoroSubject[] = [
+      {
+        id: 'p1',
+        name: 'Database Systems',
+        url: 'https://youtube.com/watch?v=dbms',
+        studyDurationMinutes: 25,
+        breakDurationMinutes: 5,
+        sessions: 1,
+      },
+    ];
+
+    await sessionManager.startPomodoro(subjects, 201);
+    expect(sessionManager.getState().approvedUrls).toContain('https://youtube.com/watch?v=dbms');
+
+    // User chooses Option A to view GeeksforGeeks reference
+    const updated = await sessionManager.approveNavigation('https://geeksforgeeks.org/sql-joins');
+    expect(updated.approvedUrls).toContain('https://geeksforgeeks.org/sql-joins');
+    expect(updated.currentStudyUrl).toBe('https://geeksforgeeks.org/sql-joins');
+  });
 });
+
