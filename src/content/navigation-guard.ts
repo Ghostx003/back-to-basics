@@ -578,6 +578,13 @@ export class NavigationGuard {
     this.ensureContainer();
     if (!this.shadow) return;
 
+    if (this.activeTicker) {
+      clearInterval(this.activeTicker);
+      this.activeTicker = null;
+    }
+
+    const countdown = getGateCSECountdown();
+
     const targetSubject = subjectName ? `studying ${subjectName}` : 'your studies';
 
     this.shadow.innerHTML = `
@@ -719,6 +726,14 @@ export class NavigationGuard {
           <p class="desc" style="color: #e4e4e7; font-weight: 500;">
             ATTENTION: An active study session is in progress! Your timer is <strong>FROZEN</strong>. Declare your intention immediately:
           </p>
+          <div class="countdown-box" style="background-color: #18181b; border: 1px solid rgba(239, 68, 68, 0.5); border-radius: 0.5rem; padding: 0.75rem 1rem; margin-bottom: 1.25rem; text-align: center; box-shadow: 0 0 25px rgba(239, 68, 68, 0.15);">
+            <div style="font-size: 0.7rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.08em; color: #ef4444; margin-bottom: 0.25rem;">
+              ⏳ GATE CSE COUNTDOWN
+            </div>
+            <div id="initial-gate-live-countdown" style="font-size: 1.1rem; font-weight: 800; color: #ffffff; font-family: monospace;">
+              ${countdown.formatted}
+            </div>
+          </div>
           <div class="btn-group">
             <button id="btn-choice-a" class="btn btn-a" type="button">
               (A) I'm only looking for study-related content
@@ -742,7 +757,7 @@ export class NavigationGuard {
                   ⏳ GATE CSE COUNTDOWN
                 </div>
                 <div id="motive-gate-live-countdown" style="font-size: 1.1rem; font-weight: 800; color: #ffffff; font-family: monospace;">
-                  ${getGateCSECountdown().formatted}
+                  ${countdown.formatted}
                 </div>
               </div>
               Every second you waste right now is a rank lost. Stop making excuses and get back to <strong>${targetSubject}</strong> IMMEDIATELY!
@@ -754,6 +769,18 @@ export class NavigationGuard {
         </div>
       </div>
     `;
+
+    const initialCountdownEl = this.shadow.getElementById('initial-gate-live-countdown');
+    this.activeTicker = setInterval(() => {
+      const live = getGateCSECountdown().formatted;
+      if (initialCountdownEl) {
+        initialCountdownEl.textContent = live;
+      }
+      const motiveCountdownEl = this.shadow?.getElementById('motive-gate-live-countdown');
+      if (motiveCountdownEl) {
+        motiveCountdownEl.textContent = live;
+      }
+    }, 1000);
 
     const choiceABtn = this.shadow.getElementById('btn-choice-a');
     const choiceBBtn = this.shadow.getElementById('btn-choice-b');
@@ -770,16 +797,6 @@ export class NavigationGuard {
       if (initialCard && motiveCard) {
         initialCard.style.display = 'none';
         motiveCard.style.display = 'block';
-
-        const motiveCountdownEl = this.shadow?.getElementById('motive-gate-live-countdown');
-        if (motiveCountdownEl) {
-          if (this.activeTicker) clearInterval(this.activeTicker);
-          this.activeTicker = setInterval(() => {
-            if (motiveCountdownEl) {
-              motiveCountdownEl.textContent = getGateCSECountdown().formatted;
-            }
-          }, 1000);
-        }
       }
     });
 

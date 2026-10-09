@@ -102,13 +102,13 @@ export const InterrogateApp: React.FC = () => {
 
           <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400">
             <Calendar className="w-3.5 h-3.5 text-amber-400" />
-            <span>GATE CSE 2027: <strong className="text-amber-400 font-mono">{gateCountdown.days}d {gateCountdown.hours}h {gateCountdown.minutes}m</strong></span>
+            <span>GATE CSE 2027: <strong className="text-amber-400 font-mono">{gateCountdown.days}d {gateCountdown.hours.toString().padStart(2, '0')}h {gateCountdown.minutes.toString().padStart(2, '0')}m {gateCountdown.seconds.toString().padStart(2, '0')}s</strong></span>
           </div>
         </div>
 
         {view === 'initial' && (
           <div>
-            <div className="flex items-start gap-4 mb-6">
+            <div className="flex items-start gap-4 mb-4">
               <div className="w-14 h-14 rounded-xl bg-red-500/20 border border-red-500/40 flex items-center justify-center text-red-500 shrink-0">
                 <AlertTriangle className="w-8 h-8" />
               </div>
@@ -127,7 +127,26 @@ export const InterrogateApp: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-4 my-8">
+            {/* Live Exam Countdown Box */}
+            <div className="bg-zinc-900/90 border border-red-500/40 rounded-xl p-4 text-center my-5 shadow-[0_0_30px_rgba(239,68,68,0.15)]">
+              <div className="text-[11px] font-extrabold uppercase tracking-widest text-red-400 mb-1.5 flex items-center justify-center gap-1.5">
+                <span>⏳</span> <span>GATE CSE 2027 LIVE COUNTDOWN</span>
+              </div>
+              <div className="text-xl sm:text-2xl font-black text-white font-mono tracking-wide">
+                <span className="text-amber-400">{gateCountdown.days} Days</span>
+                <span className="text-zinc-500 mx-2">:</span>
+                <span className="text-amber-300">{gateCountdown.hours.toString().padStart(2, '0')} Hours</span>
+                <span className="text-zinc-500 mx-2">:</span>
+                <span className="text-amber-200">{gateCountdown.minutes.toString().padStart(2, '0')} Min</span>
+                <span className="text-zinc-500 mx-2">:</span>
+                <span className="text-red-400">{gateCountdown.seconds.toString().padStart(2, '0')} Sec</span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1.5">
+                Every second wasted procrastinating is a rank surrendered to your competitors.
+              </p>
+            </div>
+
+            <div className="space-y-4 my-6">
               {/* Option A */}
               <button
                 type="button"
