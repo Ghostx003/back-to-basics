@@ -426,6 +426,10 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
 
             case 'RESET_SESSION': {
               const state = await sessionManager.reset();
+              if (state.currentStudyUrl) {
+                const tabId = await tabsManager.openOrUpdateStudyTab(state.currentStudyUrl);
+                await sessionManager.setManagedTab(tabId);
+              }
               if (state.deadline) {
                 await AlarmsManager.scheduleDeadlineAlarm(state.deadline);
               }
