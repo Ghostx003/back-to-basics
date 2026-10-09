@@ -1,0 +1,1257 @@
+MASTER BUILD PROMPT — BACK TO BASICS
+
+Build a production-quality Chrome and Brave productivity extension
+
+You are a senior software engineer, Chrome extension specialist, frontend architect, UI/UX designer, QA engineer, and performance engineer working on one product: Back to Basics.
+
+Your job is to understand the requirements, make sound technical decisions, implement the entire application, test it, document it, and prepare a GitHub repository.
+
+Do not merely explain how you would build it. Actually build the working application in the available development environment.
+
+Do not stop after generating a UI mockup, writing a project plan, or creating a basic scaffold. The finished product must have working timers, navigation, video controls, break overlays, session scheduling, persistent state, and a polished interface.
+
+When a detail is unspecified, make the simplest sensible engineering decision that preserves the product's intended behaviour. Do not add unrelated features or inflate the scope.
+
+---
+
+1. PRODUCT VISION
+
+Product name: Back to Basics
+
+Repository name: "back-to-basics"
+
+Back to Basics is a browser extension designed to help people who struggle with maintaining attention, controlling distractions, or restarting their studying journey.
+
+The central philosophy is simple:
+
+«Make it easier to start studying, harder to get distracted, and unnecessary to keep making decisions throughout a study session.»
+
+Many people intend to study but struggle to maintain a consistent routine. They open a lecture, become distracted, postpone their breaks, or continue studying without taking necessary breaks because they are absorbed in the material.
+
+Back to Basics gives users a way to prepare their study schedule in advance and let the software handle the transitions.
+
+The extension deliberately uses structured study sessions and enforced breaks. Its Pomodoro-inspired approach is intended to make focused work and regular breaks easier to follow.
+
+Do not make unsupported medical or clinical claims in the interface or README. Explain the intended productivity benefits honestly.
+
+Core product principles
+
+1. Automation over repeated manual decisions.
+2. Minimal, understandable controls.
+3. Predictable timing and reliable state management.
+4. Automatic transitions between configured study tasks.
+5. Consistent break enforcement.
+6. Distraction detection with user-controlled exceptions.
+7. Excellent performance on ordinary computers.
+8. A beautiful interface that feels like a modern 2026 application.
+9. No unnecessary features, subscriptions, accounts, analytics, or AI integrations.
+10. The application must remain useful even when a user has no internet connection to the extension itself. Obviously, the external learning websites still require whatever connectivity they normally need.
+
+2. TARGET BROWSERS AND TECHNOLOGY
+
+Build a Manifest V3 browser extension for Google Chrome, with compatibility for Brave wherever the supported extension APIs allow it.
+
+Use the following technical direction unless a concrete compatibility issue justifies a change:
+
+- React for the interface.
+- TypeScript for application logic.
+- Vite for development and production builds.
+- Tailwind CSS for styling.
+- shadcn/ui and Radix UI primitives where useful and compatible with the chosen setup.
+- Lucide icons for consistent interface icons.
+- Chrome Extension Manifest V3 APIs.
+- A background service worker for scheduling, alarms, and session coordination.
+- Content scripts for website interaction, navigation monitoring, video controls, and break overlays.
+- Chrome storage APIs for persistent configuration and recoverable session state.
+- Web Audio API or another lightweight browser-native method for the ticking sound.
+
+Use compatible, maintained libraries where they materially improve the application.
+
+You may choose an alternative UI library if it provides a better result. The final UI must still be cohesive, polished, accessible, and lightweight.
+
+Do not introduce a backend server, database server, authentication system, or cloud dependency unless a requirement genuinely needs one. The initial product should work locally.
+
+Important distinction
+
+A Chrome extension is not an ordinary website. Its service worker can be suspended, browser permissions are restricted, and its content scripts operate within individual pages.
+
+Architect around these realities rather than pretending the extension has an always-running background process.
+
+3. VISUAL DESIGN — THIS IS A MAJOR REQUIREMENT
+
+I do not want a cheap-looking, dated browser extension with tiny inputs, default HTML buttons, cramped spacing, inconsistent fonts, or an amateur interface.
+
+The finished product must look like a thoughtfully designed modern productivity application.
+
+Design direction
+
+Use a sophisticated dark interface with:
+
+- A deep charcoal or near-black background.
+- Slightly lighter surfaces for cards and input groups.
+- Clear text contrast.
+- Restrained borders.
+- Carefully chosen accent colours.
+- Consistent spacing.
+- Rounded corners that feel contemporary rather than excessive.
+- Clean typography.
+- Beautifully designed buttons and input fields.
+- Subtle hover, focus, pressed, loading, and disabled states.
+- Smooth but restrained transitions.
+- Clear visual hierarchy.
+
+The interface should feel calm, focused, and professional. Avoid excessive gradients, neon effects, giant decorative illustrations, unnecessary glassmorphism, and distracting animations.
+
+Use a consistent design system rather than styling every component independently.
+
+Styling rules
+
+Use Tailwind CSS utilities and established component libraries instead of writing large amounts of custom CSS.
+
+I want the benefits of reusable, predictable styling.
+
+- Use Tailwind for layout, sizing, spacing, typography, colours, borders, and responsive behaviour.
+- Use reusable components for buttons, cards, dialogs, inputs, segmented controls, and tooltips.
+- Use CSS variables or the selected design system's theme tokens for shared colours and design values.
+- Avoid giant custom stylesheets.
+- Avoid inline styles when a suitable utility class or reusable component exists.
+- Do not introduce a second CSS framework alongside Tailwind without a compelling reason.
+- Minimal custom CSS is acceptable for genuinely necessary features such as the circular timer, animations, or a full-page break overlay. Keep it isolated and maintainable.
+
+Interface quality checklist
+
+Every screen must have:
+
+- Consistent alignment and spacing.
+- Readable labels and helpful placeholder text.
+- Inputs large enough to use comfortably.
+- Buttons with clear purposes.
+- Proper validation messages.
+- Empty states that explain what to do.
+- Loading and error states where appropriate.
+- Keyboard-accessible controls.
+- Visible keyboard focus.
+- Tooltips for unfamiliar icons.
+- Confirmation dialogs for destructive actions.
+
+Never use technical jargon in user-facing text.
+
+For example, say "Your next lesson starts at 2:40 PM" instead of exposing internal scheduling terminology.
+
+Use friendly, direct language. Do not insult, shame, or harass the user in the name of accountability.
+
+Extension layout
+
+Build a polished extension popup with a practical, readable layout. Do not try to squeeze every setting into an unnecessarily tiny window.
+
+Use a sensible architecture that includes:
+
+1. A compact popup for current status and quick controls.
+2. A full extension dashboard or expanded view for configuring study schedules.
+3. A focused Pomodoro interface with the break overlay and countdown.
+
+The popup and dashboard must share the same session state. Opening or closing the popup must never reset or restart a timer.
+
+If the browser's popup dimensions are too restrictive, open the dashboard in an extension-owned tab rather than compromising the interface.
+
+The dashboard should remain simple and easy to understand.
+
+4. PRIMARY MODE: SCHEDULED STUDY
+
+Create a mode named Scheduled Study.
+
+Its purpose is to let the user configure a list of subjects and automatically move from one to the next.
+
+Configuration interface
+
+Provide a clean list of editable subject rows.
+
+Each row contains:
+
+1. An optional subject name.
+2. A URL input.
+3. A duration input.
+4. A remove-row button.
+
+Example:
+
+Subject| URL| Duration
+Mathematics| https://example.com/math| 40 minutes
+Operating Systems| https://example.com/os| 35 minutes
+DBMS| https://example.com/dbms| 45 minutes
+
+This is only an example. Users must be able to add as many rows as reasonably supported by the browser and interface.
+
+Include:
+
+- An "Add subject" button.
+- A "Start" button.
+- A "Pause" or "Resume" button.
+- A "Reset" button.
+- A visible current-subject indicator.
+- A remaining-time display.
+- The next transition time.
+- A clear session status.
+
+Subject names are optional. If no name is entered, use a neutral label such as "Subject 1".
+
+URL input behaviour
+
+URL inputs must support ordinary typing, selecting existing text, copying, and pasting.
+
+Provide a dedicated Paste URL button next to each URL input.
+
+When clicked, it should read the clipboard contents using the browser's supported clipboard APIs and paste the text into that specific input.
+
+Requirements:
+
+- Clipboard access must happen following an explicit user action.
+- Request only the permissions actually needed.
+- If clipboard access is denied, show a friendly message and allow manual pasting.
+- Trim accidental leading and trailing whitespace.
+- Validate the URL before starting.
+- Accept valid HTTP and HTTPS URLs.
+- Reject invalid or unsupported schemes with a clear message.
+- Never execute pasted content as code.
+
+Do not implement an unreliable clipboard hack that silently fails.
+
+Scheduled Study execution
+
+When the user presses Start:
+
+1. Validate the schedule.
+2. Save the configuration.
+3. Open the first configured study URL in a dedicated, managed study tab.
+4. Start its configured duration.
+5. Display the remaining time in the extension interface.
+6. Display the next scheduled transition time.
+7. When the duration expires, close the managed study tab and open the next configured URL.
+8. Continue until all configured subjects are completed.
+9. Show a clear completion state when the schedule finishes.
+
+The transition should happen automatically. The user must not have to press Next.
+
+If the user configures 30 minutes for Subject 1 and 35 minutes for Subject 2, each subject receives its own configured duration.
+
+Do not calculate the entire schedule once and then blindly execute stale deadlines after pauses or edits. Schedule transitions based on the actual remaining duration of the active session.
+
+Pause and resume
+
+Pause must freeze the remaining time.
+
+Example:
+
+- Original duration: 40 minutes.
+- Time elapsed: 15 minutes.
+- Remaining time: 25 minutes.
+- User presses Pause.
+- Ten minutes pass in real life.
+- User presses Resume.
+- The study session continues with 25 minutes remaining.
+
+The paused time must not count toward the configured study duration.
+
+Pausing must also cancel or invalidate pending transition actions so an old timer cannot close the tab while the session is paused.
+
+Reset
+
+Reset must restore the current session to its configured initial duration.
+
+Before disrupting an active session, display a clear confirmation such as:
+
+"Reset this session? The current timer will restart from the beginning."
+
+Reset must not silently restart the entire subject queue unless that behaviour is explicitly selected or clearly defined.
+
+After confirmation, reset the current session to its original duration and keep the rest of the schedule intact.
+
+Transition reliability
+
+Use deadline-based timing, not a continuously incremented counter as the source of truth.
+
+For example:
+
+"remaining time = max(0, deadline - current time)"
+
+When paused, persist the remaining duration. When resumed, calculate a new deadline.
+
+Use Chrome alarms or another suitable extension-compatible scheduling mechanism to wake the service worker and recheck the deadline.
+
+Do not rely on "setInterval()" remaining active indefinitely.
+
+Before performing a transition, verify:
+
+- The session is still active.
+- The session has not been paused.
+- The session identifier is current.
+- The expected subject is still active.
+- The transition has not already been processed.
+
+Transitions must be idempotent: processing the same expired deadline twice must not open duplicate tabs or skip subjects.
+
+5. SECONDARY MODE: POMODORO
+
+Create a separate mode named Pomodoro.
+
+This mode alternates between focused study sessions and enforced breaks.
+
+Its configuration differs from Scheduled Study, so do not force both modes into an awkward shared form.
+
+Pomodoro configuration
+
+Each subject row contains:
+
+1. An optional subject name.
+2. A URL.
+3. A number of study sessions.
+4. A configurable break duration.
+
+Provide a study-duration selector with:
+
+- 25 minutes.
+- 50 minutes.
+
+The default is 25 minutes.
+
+Allow the user to configure the break duration. Default it to five minutes, but permit shorter or longer custom durations.
+
+The number of sessions must be a positive integer.
+
+Example:
+
+- Subject: Operating Systems.
+- URL: A lecture playlist or course page.
+- Study duration: 25 minutes.
+- Break duration: 5 minutes.
+- Number of sessions: 3.
+
+All values must be editable before starting.
+
+Pomodoro execution
+
+When Start is pressed:
+
+1. Open the first subject's URL in the managed study tab.
+2. Begin the configured study session.
+3. Show the remaining study time.
+4. When the study duration expires, attempt to pause the active video.
+5. Display the break overlay.
+6. Begin the break countdown.
+7. Keep the video paused throughout the break.
+8. When the break ends, remove the overlay and resume the previously active video when safe and supported.
+9. Begin the next study session for that subject.
+10. Repeat until the configured session count is reached.
+11. Mark the subject completed.
+12. Automatically open the next subject and start its first session.
+13. Continue until the entire queue is complete.
+
+The entire sequence should run automatically.
+
+The user should not need to click Start again between subjects or sessions.
+
+Session-count semantics
+
+Define session counting consistently.
+
+One completed study session means one full configured study interval has elapsed.
+
+If a subject has three sessions, the extension should perform three study intervals. Breaks occur between sessions.
+
+By default, do not force an additional break after the final session of a subject. Once the final study interval finishes, proceed to the next subject or the completion screen.
+
+If the user presses Skip Break, end the current break immediately and resume the next study interval.
+
+Do not count a partially completed interval as a completed study session.
+
+Break duration and timer independence
+
+The Pomodoro countdown measures real elapsed time.
+
+It must not depend on the video's playback position.
+
+If the user watches a video at 1.25x, 1.5x, 2x, or any other playback speed, the study timer must continue at the same wall-clock rate.
+
+Likewise, if another browser extension modifies playback speed, the study timer must remain unaffected.
+
+Never derive session time from:
+
+- Video timestamps.
+- Playback progress.
+- The number of frames rendered.
+- The video's playback speed.
+- The rate at which a webpage executes JavaScript.
+
+Only the configured timer controls session transitions.
+
+6. BREAK OVERLAY — A POLISHED FULL-PAGE EXPERIENCE
+
+The break overlay is one of the product's defining features.
+
+When study time expires, the current page must become visually inaccessible to the user until the break ends or the user skips the break.
+
+Visual requirements
+
+Display a full-page, pitch-black overlay over the study page.
+
+It must:
+
+- Cover the visible page.
+- Appear above the website's ordinary content.
+- Prevent ordinary interaction with the underlying page.
+- Remain visible throughout the break.
+- Show a circular countdown.
+- Show a large digital countdown.
+- Clearly state that it is break time.
+- Display the remaining time.
+- Include a "Skip break" button.
+- Remain readable and responsive at different viewport sizes.
+
+The interface should feel intentionally designed, not like a generic alert box.
+
+Use the same design language as the extension dashboard.
+
+The circular countdown should update smoothly without requiring an expensive animation loop. Prefer lightweight CSS or SVG rendering with efficient updates.
+
+Break timing
+
+Suppose the study interval expires at 2:00 PM and the break duration is five minutes.
+
+The break ends at 2:05 PM.
+
+The countdown must remain correct if:
+
+- The browser tab becomes inactive.
+- The popup is closed.
+- The computer is briefly under load.
+- The extension service worker is suspended.
+- The page is restored from a previous state.
+
+Calculate remaining time from a persisted deadline.
+
+Do not let animation timing determine when the break ends.
+
+Skip break
+
+Provide a clear "Skip break" action.
+
+When clicked:
+
+1. End the break immediately.
+2. Stop the break countdown.
+3. Stop any break-related sound.
+4. Remove the overlay.
+5. Resume the next study interval.
+6. Resume the video only if it is safe and supported.
+
+Prevent duplicate actions if the user clicks the button repeatedly.
+
+Video playback after breaks
+
+Remember the playback state before the break whenever possible.
+
+If the video was playing when the break started, attempt to resume it after the break.
+
+If the video was already paused manually, do not automatically start it.
+
+If playback cannot be resumed because of browser restrictions, autoplay policies, or the website's behaviour, keep the break completed and show a small, understandable message that the user may need to press Play.
+
+Do not repeatedly force playback in a way that creates infinite retry loops.
+
+7. VIDEO PAUSING AND RESUMING
+
+The primary video websites are:
+
+- YouTube.
+- Custom course websites.
+- Other ordinary websites that contain HTML5 video players.
+
+Build a layered video-control system. Do not assume every website uses the same player.
+
+Strategy A: Standard HTML5 video controls
+
+First, inspect the active page for visible HTML5 video elements.
+
+Use the standard HTMLMediaElement API to inspect and control playback when permitted.
+
+Relevant properties and methods include:
+
+- "paused"
+- "ended"
+- "currentTime"
+- "playbackRate"
+- "pause()"
+- "play()"
+
+Prefer the standard API over fragile DOM manipulation whenever possible.
+
+Remember that cross-origin restrictions, embedded players, and website-specific behaviour may limit what the extension can control.
+
+Strategy B: Website-specific player controls
+
+For YouTube, implement and test a dedicated content-script strategy.
+
+Prefer the player API or the actual visible pause control when available and reliable.
+
+If appropriate, interact with the YouTube player through its supported interface rather than randomly clicking arbitrary page elements.
+
+For custom websites, attempt to identify visible play/pause controls and standard HTML5 video elements.
+
+Do not assume the first video element on the page is always the active video.
+
+Support multiple videos by identifying the active or playing instance where possible.
+
+Strategy C: Recovery when normal pausing fails
+
+If the standard pause attempt does not work:
+
+1. Recheck whether the active video is still playing.
+2. Inspect accessible video elements and player state.
+3. Retry the appropriate player-specific pause control.
+4. Attempt another supported pause mechanism if available.
+5. If necessary, apply a carefully controlled page-specific fallback.
+
+Do not blindly click the centre of the page. Clicking the wrong element could navigate away, trigger an advertisement, or interact with an unrelated control.
+
+Use targeted actions based on the actual page structure.
+
+Strategy D: Last-resort recovery
+
+If audio continues after normal pause attempts, investigate whether another media instance or embedded player is still playing.
+
+Where permissions and browser APIs permit, use an appropriate recovery method.
+
+A page refresh may be considered only as a last resort after ordinary controls have failed, and only when the extension can safely handle the resulting page reload.
+
+Important requirements:
+
+- Do not refresh pages repeatedly.
+- Do not refresh during normal study.
+- Do not automatically discard unsaved form data.
+- Do not reload a page if doing so could cause loss of important user work without appropriate safeguards.
+- Do not assume refreshing will preserve the same video or playback state.
+- Never create a recovery loop that continuously reloads the page.
+
+The objective is to stop study media during the break, not to break the website.
+
+Resuming playback
+
+Store enough information to distinguish between:
+
+- Media that was playing before the break.
+- Media that was already paused.
+- Media that has ended.
+- Media that has been replaced by navigation.
+
+Resume only the appropriate media instance.
+
+If the user changes to a different lesson during a break, do not blindly resume the old lesson.
+
+Multiple players and continued audio
+
+Some websites may contain multiple media elements or embedded players.
+
+Use bounded verification attempts to check whether audio is still playing after a pause request.
+
+Avoid aggressive polling, repeated DOM scans, and unnecessary page-wide observers.
+
+Stop recovery attempts once the media is paused, the break ends, or the relevant page is no longer active.
+
+Do not request broad system-audio capture or microphone permissions merely to implement this feature.
+
+Playback speed compatibility
+
+The extension must never modify the user's playback speed.
+
+It must not interfere with existing speed-control extensions.
+
+The study timer remains completely independent of playback speed.
+
+8. THE FINAL 30 SECONDS: TICKING SOUND
+
+During the final 30 seconds of the study interval, play a quiet, clock-like ticking sound.
+
+The purpose is to notify the user that the break is approaching.
+
+Requirements:
+
+- Start ticking when the study timer reaches 30 seconds remaining.
+- Continue at a steady, restrained pace.
+- Stop immediately when the study interval expires.
+- Stop immediately if the session is cancelled or reset.
+- Never play ticking sounds during a break.
+- Do not allow overlapping sound loops.
+- Do not play sound while the extension is idle.
+- Avoid creating a new audio object every second.
+- Keep CPU usage and memory overhead negligible.
+
+Use a lightweight sound asset or a carefully implemented Web Audio approach.
+
+Respect browser autoplay restrictions. If audio cannot begin until a user interaction has occurred, initialise the audio capability appropriately and provide a clear fallback.
+
+The ticking sound should be enabled by default, with a simple setting to turn it off.
+
+Do not introduce a complicated sound-settings screen.
+
+9. NAVIGATION AND DISTRACTION DETECTION
+
+This is a core product feature.
+
+The extension must understand that users sometimes need to navigate between pages while studying.
+
+For example, a user may click the next lecture, open course notes, or move from a lesson page to another lesson page.
+
+Not every URL change means distraction.
+
+Managed study tab
+
+Create a dedicated study tab controlled by the extension.
+
+Use that tab for the active study schedule.
+
+Avoid taking control of every tab in the browser.
+
+The user may still have unrelated tabs open, but the extension must not accidentally close those tabs when moving between subjects.
+
+The extension should know:
+
+- Which tab belongs to the active study session.
+- Which URL is currently being studied.
+- Whether the current session is active or paused.
+- Which subject is scheduled next.
+- Whether navigation has been approved.
+
+Detecting navigation
+
+Monitor relevant navigation events using the supported Chrome extension APIs and content scripts.
+
+Account for:
+
+- Normal link clicks.
+- Redirects.
+- Single-page application route changes.
+- "history.pushState()" and "history.replaceState()" navigation where applicable.
+- Browser back and forward navigation.
+- YouTube video navigation.
+- Navigation to another lesson within the same course.
+
+Do not rely exclusively on URL-change events from a background tab.
+
+Approved study navigation
+
+If the user navigates to another page that is reasonably part of the study workflow, allow it to become the current study URL.
+
+The extension should continue the same timer rather than restart the session.
+
+This is especially important for YouTube and learning-management websites where each lecture may have a different URL.
+
+Unexpected navigation
+
+If the user navigates somewhere that appears unrelated to the active study page, display a small, clear confirmation interface.
+
+Use simple wording:
+
+"Is this part of your study?"
+
+Provide two choices:
+
+1. "Yes, continue studying."
+2. "No, take me back."
+
+If the user chooses Yes:
+
+- Approve the destination.
+- Update the current study URL.
+- Continue the existing timer.
+- Do not reset the Pomodoro session.
+
+If the user chooses No:
+
+- Return the managed tab to the previous approved study page.
+- Preserve the existing timer state.
+- Do not count the rejected destination as a completed study task.
+
+Do not block normal navigation permanently.
+
+Do not repeatedly show the same confirmation for every minor navigation event on an already approved page.
+
+Navigation and timing
+
+Define the timer behaviour consistently.
+
+- Approved navigation: the timer continues.
+- Rejected navigation: return to the approved page without restarting the timer.
+- Leaving the managed study tab or switching to an unrelated tab: do not automatically pause the timer unless the user explicitly enables a separate, clearly labelled setting.
+- Closing the managed study tab: detect the event and handle it gracefully.
+- Paused session: navigation must not resume the timer.
+- Break in progress: unexpected navigation must not remove the break enforcement or restart the study timer.
+
+The default behaviour should not allow a simple tab switch to bypass the schedule.
+
+Avoid false positives
+
+Some websites navigate internally without changing their origin. Others change domains as part of a legitimate login or lesson flow.
+
+Use sensible heuristics, known player behaviour, and explicit user approval.
+
+Do not pretend that an algorithm can perfectly determine whether a page is educational.
+
+When uncertain, ask once and remember the user's approval for the relevant navigation context during the active session.
+
+10. TIMER AND SESSION STATE ARCHITECTURE
+
+This application will fail if its timers are unreliable. Treat state management as a primary engineering concern.
+
+Create a single authoritative session state managed by the background service worker and persisted through suitable Chrome storage APIs.
+
+The popup, dashboard, and content scripts should communicate with that state rather than maintaining separate independent timers.
+
+State model
+
+Use clear, typed states such as:
+
+- Idle.
+- RunningStudy.
+- PausedStudy.
+- RunningBreak.
+- PausedBreak, only if break pausing is explicitly supported.
+- Completed.
+- Error.
+
+Avoid ambiguous combinations of booleans that permit impossible states.
+
+Persist the following where appropriate:
+
+- Current mode.
+- Subject queue.
+- Current subject index.
+- Current Pomodoro session index.
+- Configured study duration.
+- Configured break duration.
+- Remaining duration when paused.
+- Active deadline when running.
+- Current managed tab identifier.
+- Current approved study URL.
+- Media playback information.
+- Session identifier.
+- Session status.
+- Whether a transition has already been processed.
+
+Do not persist unnecessary page data or sensitive browsing information.
+
+Service-worker suspension
+
+Chrome may terminate an inactive extension service worker.
+
+Therefore:
+
+- Do not assume a JavaScript timer will run forever.
+- Persist enough information to reconstruct the current session.
+- Use Chrome alarms to trigger deadline checks.
+- Recalculate the remaining time when the worker wakes.
+- Re-register necessary alarms during startup or recovery.
+- Check the persisted session state before processing an alarm.
+- Ignore stale alarms associated with older sessions.
+- Make duplicate alarm handling harmless.
+
+Do not create a rapid alarm loop.
+
+Use the supported scheduling precision of the target browser. Recheck the deadline when an alarm fires rather than assuming it will fire at the exact millisecond.
+
+Browser restart and recovery
+
+If Chrome or Brave restarts during a session, recover gracefully where possible.
+
+A paused session should remain paused.
+
+A running session should be reconciled against its saved deadline and session state.
+
+If the browser was closed for 20 minutes, do not pretend those 20 minutes never passed unless the session was explicitly paused.
+
+If the configured session expired while the browser was closed, process the overdue transition safely when the extension becomes active again.
+
+Never open several duplicate tabs because multiple recovery events occur.
+
+Pause and reset correctness
+
+Every state-changing action must be validated against the current session identifier and status.
+
+A late alarm from an old session must never affect a new session.
+
+Resetting or starting a new session must invalidate stale scheduled work.
+
+11. PERFORMANCE AND RESOURCE USAGE
+
+The extension must be lightweight.
+
+Do not overload RAM, cause Chrome or Brave to crash, freeze the browser, or introduce unnecessary background activity.
+
+No software can guarantee that a browser will never crash, but the extension must be engineered to minimise its own resource consumption and avoid known crash-prone patterns.
+
+Performance rules
+
+- Use TypeScript and clear component boundaries.
+- Keep React rendering efficient.
+- Avoid unnecessary state updates every few milliseconds.
+- Update visible countdowns at a sensible frequency.
+- Calculate remaining time from deadlines.
+- Do not use infinite polling.
+- Do not repeatedly scan the entire DOM.
+- Avoid installing global event listeners unnecessarily.
+- Disconnect observers when no longer needed.
+- Remove event listeners when content scripts are disposed or their lifecycle ends.
+- Clean up audio resources.
+- Do not repeatedly inject duplicate content scripts.
+- Do not open hidden tabs or windows to keep the service worker alive.
+- Do not attempt to defeat Chrome's service-worker lifecycle.
+- Avoid heavy dependencies when a browser-native API is sufficient.
+- Never bundle development servers or unnecessary tooling into the production extension.
+- Do not log every timer tick or navigation event in production.
+
+Use content scripts only on relevant pages and only while the associated functionality is needed.
+
+The extension should remain responsive when the user has many unrelated browser tabs open.
+
+12. SECURITY AND PERMISSIONS
+
+Use the principle of least privilege.
+
+Request only the browser permissions needed for the actual features.
+
+Evaluate permissions such as:
+
+- "storage"
+- "alarms"
+- "tabs"
+- "scripting"
+- "activeTab", where appropriate
+- Host permissions for websites that require video interaction.
+
+Do not automatically request unrestricted access to every website if a narrower permission strategy can satisfy the product.
+
+If the extension needs access to arbitrary study URLs, explain the necessary permission flow clearly.
+
+Do not include remote executable JavaScript.
+
+Respect Manifest V3 restrictions on remotely hosted code.
+
+Do not use "eval()" or unsafe dynamic code execution.
+
+Validate messages exchanged between the popup, service worker, and content scripts.
+
+Do not allow arbitrary webpage messages to trigger privileged tab-closing or scheduling actions without validation.
+
+Protect against accidental tab closure and duplicate transition events.
+
+The extension must only close tabs that it has explicitly created or adopted as its managed study tab, subject to the user's configuration and consent.
+
+Do not expose browser cookies, authentication tokens, or unrelated browsing history.
+
+13. USER EXPERIENCE AND INTERACTION RULES
+
+The interface must be understandable without reading documentation.
+
+Avoid technical terminology such as "service worker," "deadline reconciliation," "content script," or "state machine" in user-facing UI.
+
+Use clear labels such as:
+
+- Start studying.
+- Pause.
+- Resume.
+- Reset session.
+- Add subject.
+- Paste URL.
+- Study time remaining.
+- Break time remaining.
+- Next lesson.
+- Session complete.
+
+Input behaviour
+
+Inputs should:
+
+- Support keyboard navigation.
+- Preserve entered values when the interface closes and reopens.
+- Show validation inline.
+- Avoid unexpectedly clearing user input.
+- Have sensible default values.
+
+Do not make every action open a modal.
+
+Reserve confirmations for meaningful destructive actions, such as resetting an active session or abandoning the queue.
+
+Accessibility
+
+Use semantic controls and accessible names.
+
+Ensure readable contrast.
+
+Provide keyboard focus indicators.
+
+Make the interface usable without a mouse wherever reasonably possible.
+
+Do not rely solely on colour to communicate session status.
+
+Respect reduced-motion preferences for decorative animations.
+
+The ticking sound should be accompanied by a visible countdown so the application remains usable when sound is disabled.
+
+14. SETTINGS — KEEP THEM MINIMAL
+
+Include only the settings necessary for the described product:
+
+- Sound on/off.
+- Optional navigation-pause behaviour if implemented.
+- Any genuinely necessary permission or recovery setting.
+
+The user did not ask for a large settings panel.
+
+Do not add:
+
+- User accounts.
+- Cloud synchronisation.
+- AI chat.
+- AI study recommendations.
+- Social features.
+- Gamification.
+- Streaks.
+- Leaderboards.
+- Subscription tiers.
+- A complicated analytics dashboard.
+- Unrequested website blocking lists.
+- A general-purpose task manager.
+
+Keep the product focused.
+
+15. ERROR HANDLING
+
+Handle predictable failure cases gracefully.
+
+Examples:
+
+- Invalid URL.
+- Clipboard permission denied.
+- Study tab manually closed.
+- Video pause attempt fails.
+- Browser permission missing.
+- Chrome alarm arrives late.
+- Browser restarts.
+- Storage operation fails.
+- User presses Start twice.
+- User resets during a break.
+- A previous session's alarm fires after a new session starts.
+- A website blocks programmatic playback.
+- The next subject's URL cannot be loaded.
+
+Never let one failed video-control attempt crash the entire extension.
+
+If a page cannot be controlled, preserve the timer and session state, explain the limitation in plain language, and offer a reasonable recovery action.
+
+Do not silently mark unfinished subjects as complete.
+
+Do not repeatedly retry a failing operation without a retry limit.
+
+16. GITHUB REPOSITORY AND PROJECT DOCUMENTATION
+
+Create a GitHub repository named:
+
+"back-to-basics"
+
+The repository should have a clear, professional README.
+
+Suggested repository description:
+
+"Back to Basics is a lightweight Chrome and Brave extension for structured study sessions, automatic lesson transitions, and Pomodoro-inspired breaks."
+
+README introduction
+
+Use the following message as the basis of the introduction:
+
+"Back to Basics was created for people who are restarting their learning journey and want a simpler way to build a consistent study routine. The idea is straightforward: configure your study material, choose your session lengths, and let the extension handle the transitions and breaks. By making focused sessions and regular breaks easier to follow, Back to Basics aims to reduce the number of decisions users need to make while studying."
+
+README sections
+
+Include:
+
+1. Product overview.
+2. Why Back to Basics exists.
+3. Core features.
+4. Scheduled Study mode.
+5. Pomodoro mode.
+6. Video controls and supported websites.
+7. Installation instructions for Chrome.
+8. Installation instructions for Brave.
+9. Development setup.
+10. Build instructions.
+11. Testing instructions.
+12. Permissions explanation.
+13. Known browser and website limitations.
+14. Project structure.
+15. Troubleshooting.
+16. Contribution instructions.
+17. License.
+
+Explain that support for website-specific video players can vary.
+
+Do not claim that every website has been tested unless the tests actually occurred.
+
+GitHub execution requirements
+
+If GitHub access and authenticated Git tooling are available:
+
+- Create the repository.
+- Initialise Git if necessary.
+- Add an appropriate ".gitignore".
+- Commit the working source code.
+- Push the initial implementation.
+- Include the README and all necessary configuration files.
+
+Use the repository name "back-to-basics".
+
+Do not expose access tokens or credentials in source code, terminal output, commits, or documentation.
+
+Do not invent credentials.
+
+If GitHub access is unavailable, finish the local repository and provide the exact commands needed to create and push it. Do not claim that a remote repository has been created unless it has actually been created.
+
+17. PROJECT STRUCTURE
+
+Use a maintainable structure. Adapt the precise filenames to the chosen tooling, but keep responsibilities separated.
+
+A possible layout:
+
+- "src/popup/" — compact extension popup.
+- "src/dashboard/" — full schedule configuration interface.
+- "src/components/" — shared UI components.
+- "src/features/scheduled-study/" — Scheduled Study behaviour.
+- "src/features/pomodoro/" — Pomodoro behaviour.
+- "src/background/" — background service worker and scheduling.
+- "src/content/" — page interaction and break overlay.
+- "src/content/video/" — reusable video-control strategies.
+- "src/content/navigation/" — navigation detection and approval.
+- "src/shared/" — types, message contracts, and common utilities.
+- "src/storage/" — persistence and recovery.
+- "tests/" — unit and integration tests.
+- "public/" — extension manifest and required static assets.
+
+Do not create an unnecessarily fragmented codebase. The structure should improve readability and testing, not create dozens of tiny files without a purpose.
+
+Use shared, typed message contracts between the service worker and content scripts.
+
+18. TESTING REQUIREMENTS
+
+Do not declare the project complete simply because it builds.
+
+Write meaningful automated tests for the important logic.
+
+Timer tests
+
+Test:
+
+- Starting a session.
+- Pausing a session.
+- Resuming a paused session.
+- Resetting a session.
+- Reaching zero.
+- Handling a late alarm.
+- Ignoring a stale alarm.
+- Preventing duplicate transitions.
+- Recovering from saved state.
+- Preserving time during approved navigation.
+
+Pomodoro tests
+
+Test:
+
+- A 25-minute session.
+- A 50-minute session.
+- A custom break duration.
+- Multiple sessions per subject.
+- Automatic transition to the next subject.
+- Skip Break.
+- Final-session completion.
+- No extra break after the final session by default.
+- Reset during a break.
+- No duplicate video-resume requests.
+
+Use fake timers for deterministic unit tests where suitable.
+
+UI tests
+
+Test:
+
+- Adding and removing subjects.
+- URL validation.
+- Optional subject names.
+- Invalid duration values.
+- Clipboard fallback messaging.
+- Start, pause, resume, and reset controls.
+- Session completion display.
+- Empty schedules.
+- Persistence of configuration.
+
+Browser integration tests
+
+Where practical, use a compatible browser automation framework and an unpacked extension build.
+
+Verify:
+
+- The extension loads.
+- The dashboard opens.
+- Study URLs open in the managed tab.
+- Subject transitions work.
+- Unrelated tabs remain open.
+- The break overlay appears.
+- Navigation approval works.
+- Video pausing works on a test HTML5 video page.
+- YouTube-specific behaviour is tested separately where feasible.
+
+Do not claim successful YouTube integration merely because a generic HTML5 video test passes.
+
+Clearly distinguish automated test results from manual tests that have actually been performed.
+
+19. IMPLEMENTATION WORKFLOW
+
+Work methodically.
+
+Phase 1: Inspect and plan
+
+Inspect the existing workspace before making changes.
+
+If a project already exists, understand its current structure and preserve useful work.
+
+Write a concise implementation plan identifying:
+
+- Major components.
+- State ownership.
+- Timer architecture.
+- Browser permissions.
+- Video-control strategy.
+- Navigation handling.
+- Test strategy.
+
+Do not spend excessive time producing documentation before implementing the application.
+
+Phase 2: Build the foundation
+
+Implement:
+
+- Manifest V3 configuration.
+- Build tooling.
+- TypeScript types.
+- Shared messaging.
+- Persistent state.
+- Background scheduling.
+- Basic extension loading.
+
+Verify that the extension builds and loads before proceeding.
+
+Phase 3: Build the UI
+
+Implement the polished popup and dashboard using Tailwind and reusable components.
+
+Finish both study-mode configuration screens.
+
+Ensure the application is visually cohesive before adding complicated website interactions.
+
+Phase 4: Implement session logic
+
+Implement Scheduled Study and Pomodoro as explicit state machines or equivalent well-defined state transitions.
+
+Add deadline-based timing, persistence, recovery, and stale-event protection.
+
+Write timer tests as the logic is implemented.
+
+Phase 5: Implement browser interactions
+
+Implement:
+
+- Managed study tab.
+- Automatic URL transitions.
+- Navigation detection.
+- Approval and return behaviour.
+- Video pause/resume.
+- Break overlay.
+- Ticking sound.
+- Break skipping.
+
+Test each feature independently before combining everything.
+
+Phase 6: Validate the application
+
+Run the available checks:
+
+- TypeScript type checking.
+- Production build.
+- Unit tests.
+- UI tests.
+- Browser integration tests where available.
+- Linting if configured.
+
+Fix the errors that are discovered.
+
+Do not disable tests or weaken type checking just to obtain a green result.
+
+Phase 7: Deliver
+
+Provide:
+
+- The complete source code.
+- The production extension build.
+- The README.
+- The test suite.
+- Build and installation instructions.
+- A concise list of completed features.
+- A list of limitations or tests that could not be performed.
+- The GitHub repository URL if successfully created.
+
+Do not leave major features as TODO comments.
+
+If a browser restriction prevents an exact behaviour, implement the closest reliable supported behaviour and document the limitation honestly.
+
+20. DEFINITION OF DONE
+
+The application is complete only when all of the following are satisfied:
+
+- It builds as a Manifest V3 extension.
+- It loads in Chrome.
+- Brave compatibility has been checked where the environment allows.
+- The interface looks modern and professional.
+- Scheduled Study works.
+- Pomodoro works.
+- Users can configure multiple subjects.
+- Each subject has an independent configured duration or session count, as appropriate to its mode.
+- Pause, resume, and reset behave correctly.
+- Study timers are independent of video playback speed.
+- Breaks pause supported videos.
+- The black break overlay works.
+- The circular and digital countdowns remain synchronised.
+- The final 30-second ticking sound works where browser audio policies permit.
+- Videos resume appropriately after breaks when supported.
+- Navigation changes are handled intelligently.
+- Unrelated browser tabs are protected.
+- Timer state survives popup closure.
+- Background service-worker suspension does not permanently break sessions.
+- Duplicate alarms do not cause duplicate transitions.
+- Configuration persists across ordinary browser restarts.
+- Errors are handled gracefully.
+- The project contains a clear README.
+- Automated tests cover the core timing logic.
+- The production build is free of development-only dependencies and debugging noise.
+- The GitHub repository has been pushed if authenticated access is available.
+
+FINAL INSTRUCTIONS
+
+Build Back to Basics as a real, usable browser extension, not a proof of concept.
+
+Prioritise correctness, performance, clean architecture, reliable automation, and exceptional UI quality.
+
+Use modern libraries where appropriate. Avoid unnecessary custom CSS. Do not overload the project with features I did not request.
+
+Think carefully about Chrome's lifecycle, webpage differences, media-player limitations, browser permissions, and asynchronous events.
+
+When something fails, handle it gracefully rather than allowing the entire session to fail.
+
+Make the application simple for the user and technically robust behind the scenes.
+
+The final experience should be: configure the subjects, press Start, study, take the enforced breaks, and let Back to Basics handle the rest.
