@@ -85,6 +85,8 @@ export class SessionManager {
       completedAt: null,
       errorMessage: undefined,
       lastTransitionProcessedId: undefined,
+      violationCount: 0,
+      isInterrogating: false,
     });
   }
 
@@ -124,7 +126,67 @@ export class SessionManager {
       completedAt: null,
       errorMessage: undefined,
       lastTransitionProcessedId: undefined,
+      violationCount: 0,
+      isInterrogating: false,
     });
+  }
+
+  /**
+   * Pauses study timer when a new tab opens awaiting interrogation.
+   * Freezes the remaining time so no time is lost while answering.
+   */
+  public async pauseForInterrogation(): Promise<SessionState> {
+    if (this.state.status !== 'RunningStudy' && this.state.status !== 'RunningBreak') {
+      return this.state;
+    }
+
+    const now = Date.now();
+    const remaining = this.state.deadline ? Math.max(0, this.state.deadline - now) : this.state.remainingMs;
+
+    return await this.updateState({
+      remainingMs: remaining,
+      deadline: null,
+      isInterrogating: true,
+    });
+  }
+
+  /**
+   * Resumes study timer with exact remaining time after interrogation concludes.
+   */
+  public async resumeFromInterrogation(): Promise<SessionState> {
+    if (!this.state.isInterrogating) {
+      return this.state;
+    }
+
+    const now = Date.now();
+    const newDeadline = now + this.state.remainingMs;
+
+    return await this.updateState({
+      deadline: newDeadline,
+      isInterrogating: false,
+    });
+  }
+
+  /**
+   * Increments violation count up to 3 strikes.
+   */
+  public async recordViolation(): Promise<{ violationCount: number; shouldTerminate: boolean }> {
+    const nextCount = this.state.violationCount + 1;
+    await this.updateState({ violationCount: nextCount });
+    return {
+      violationCount: nextCount,
+      shouldTerminate: nextCount >= 3,
+    };
+  }
+
+  public getCurrentSubjectName(): string {
+    if (this.state.mode === 'scheduled') {
+      const sub = this.state.scheduledQueue[this.state.currentSubjectIndex];
+      return sub?.name?.trim() || '';
+    } else {
+      const sub = this.state.pomodoroQueue[this.state.currentSubjectIndex];
+      return sub?.name?.trim() || '';
+    }
   }
 
   /**

@@ -499,12 +499,22 @@ const ALL_BLOCKED_DOMAINS = new Set<string>([
 /**
  * Checks if a given URL is in the blocklist or matches dirty/distraction patterns.
  */
-export function isBlockedUrl(url: string): boolean {
+export function isBlockedUrl(url: string, customBlacklist: string[] = []): boolean {
   if (!url) return false;
 
   try {
     const parsed = new URL(url);
     const hostname = parsed.hostname.toLowerCase();
+
+    // Check custom user-added blacklist
+    if (customBlacklist && customBlacklist.length > 0) {
+      for (const custom of customBlacklist) {
+        const norm = custom.toLowerCase().trim();
+        if (norm && (hostname === norm || hostname.endsWith('.' + norm))) {
+          return true;
+        }
+      }
+    }
 
     // Check YouTube shorts specifically
     if (

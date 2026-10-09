@@ -1,5 +1,6 @@
 import { isBlockedUrl } from '../shared/blocklist';
 import { ExtensionMessage, ExtensionResponse } from '../shared/messages';
+import { getDaysToGateCSE } from '../shared/types';
 import { ExtensionStorage } from '../storage/storage';
 import { AlarmsManager, DEADLINE_ALARM_NAME } from './alarms';
 import { SessionManager } from './session-manager';
@@ -62,6 +63,21 @@ async function processDeadlineTransition() {
     return;
   }
 
+  // Record completed study interval log if transitioning from RunningStudy
+  if (currentState.status === 'RunningStudy') {
+    const subjectName = sessionManager.getCurrentSubjectName() || 'Study Interval';
+    const durationMinutes = Math.max(1, Math.round(currentState.totalIntervalMs / 60000));
+    ExtensionStorage.recordSessionLog({
+      id: `sess_${Date.now()}`,
+      mode: currentState.mode || 'scheduled',
+      subjectName,
+      startedAt: Date.now() - currentState.totalIntervalMs,
+      endedAt: Date.now(),
+      durationMinutes,
+      status: 'Completed',
+    }).catch(() => {});
+  }
+
   const nextState = result.state;
 
   if (result.action === 'NAVIGATE' && result.nextUrl) {
@@ -103,9 +119,53 @@ if (typeof chrome !== 'undefined' && chrome.alarms) {
 }
 
 /**
- * Tab Navigation and Distraction Monitoring
+ * Tab Navigation, Distraction Monitoring & 3-Strike Enforcement
  */
 if (typeof chrome !== 'undefined' && chrome.tabs) {
+  // 1. Interrogate new tabs created during an active study session
+  chrome.tabs.onCreated.addListener(async (tab) => {
+    const state = sessionManager.getState();
+    if (state.status === 'RunningStudy' && !state.isInterrogating) {
+      // Pause study timer immediately
+      await sessionManager.pauseForInterrogation();
+      await AlarmsManager.clearDeadlineAlarm();
+      broadcastStateUpdate();
+
+      const subjectName = sessionManager.getCurrentSubjectName();
+      const remainingMinutes = Math.max(
+        1,
+        Math.ceil((sessionManager.getState().remainingMs || 0) / 60000)
+      );
+      const daysToGate = getDaysToGateCSE();
+
+      // Send prompt to the managed study tab
+      tabsManager
+        .sendMessageToManagedTab({
+          type: 'SHOW_INTERROGATION_PROMPT',
+          payload: { subjectName, remainingMinutes, daysToGate },
+        })
+        .catch(() => {});
+
+      // If the newly opened tab already has an ID, listen once for its update to inject prompt there too
+      if (tab.id) {
+        const newTabId = tab.id;
+        const tabListener = (updatedId: number, change: chrome.tabs.TabChangeInfo) => {
+          if (updatedId === newTabId && change.status === 'complete') {
+            chrome.tabs.onUpdated.removeListener(tabListener);
+            chrome.tabs
+              .sendMessage(newTabId, {
+                type: 'SHOW_INTERROGATION_PROMPT',
+                payload: { subjectName, remainingMinutes, daysToGate },
+              })
+              .catch(() => {});
+          }
+        };
+        chrome.tabs.onUpdated.addListener(tabListener);
+      }
+    }
+  });
+
+  // 2. Navigation changes on tabs
   chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
     if (!changeInfo.url) {
       return;
@@ -128,23 +188,69 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
       return;
     }
 
-    // 1. Aggressively intercept blocklisted websites (Netflix, Reddit, X.com, adult sites)
-    if (isBlockedUrl(newUrl)) {
-      if (state.currentStudyUrl) {
-        await chrome.tabs.update(tabId, { url: state.currentStudyUrl });
-        setTimeout(async () => {
-          await chrome.tabs.sendMessage(tabId, {
-            type: 'SHOW_BLOCKED_NOTICE',
-            payload: { blockedUrl: newUrl },
-          }).catch(() => {});
-        }, 500);
+    // Retrieve analytics to include user's custom blacklist
+    const analytics = await ExtensionStorage.getAnalytics();
+    const isViolating = isBlockedUrl(newUrl, analytics.customBlacklist);
+
+    // If blacklisted URL is visited during study:
+    if (isViolating) {
+      // Immediately close violating tab
+      await chrome.tabs.remove(tabId).catch(() => {});
+
+      // Record strike violation
+      const { violationCount: strikes } = await sessionManager.recordViolation();
+      const currentSubject = sessionManager.getCurrentSubjectName() || 'your studies';
+
+      if (strikes < 3) {
+        // Strike 1 or 2: prominent warning on the managed study tab
+        await tabsManager.sendMessageToManagedTab({
+          type: 'SHOW_STRIKE_WARNING',
+          payload: {
+            strike: strikes,
+            message: `Warning ${strikes}: Stick to your subject (${currentSubject})! Distracting sites are blocked.`,
+            isFinalCountdown: false,
+          },
+        });
       } else {
-        await chrome.tabs.remove(tabId).catch(() => {});
+        // Strike 3: 5-second countdown final warning, then close study tabs & terminate
+        await tabsManager.sendMessageToManagedTab({
+          type: 'SHOW_STRIKE_WARNING',
+          payload: {
+            strike: 3,
+            message:
+              '3 violations reached! Session terminated. Managed study tab is closing now.',
+            isFinalCountdown: true,
+          },
+        });
+
+        // After 5.2 seconds, close managed tabs and terminate session
+        setTimeout(async () => {
+          const currentState = sessionManager.getState();
+          const durationMinutes = Math.max(
+            1,
+            Math.round((currentState.totalIntervalMs - (currentState.remainingMs || 0)) / 60000)
+          );
+
+          await ExtensionStorage.recordSessionLog({
+            id: `term_${Date.now()}`,
+            mode: currentState.mode || 'scheduled',
+            subjectName: currentSubject,
+            startedAt: Date.now() - durationMinutes * 60000,
+            endedAt: Date.now(),
+            durationMinutes,
+            status: 'Terminated',
+          });
+
+          await AlarmsManager.clearDeadlineAlarm();
+          tabsManager.closeManagedTab();
+          await sessionManager.quitSession();
+          broadcastStateUpdate();
+        }, 5200);
       }
       return;
     }
 
-    // 2. Check if this is the managed study tab
+    // Check if this is the managed study tab
     if (tabId === tabsManager.getManagedTabId()) {
       const isApproved = state.approvedUrls.some((u) => {
         try {
@@ -158,7 +264,7 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
         await sessionManager.approveNavigation(newUrl);
         broadcastStateUpdate();
       } else {
-        // Unexpected navigation! Set pending and notify content script
+        // Unexpected navigation! Ask permission
         await sessionManager.setPendingNavigation(newUrl);
         broadcastStateUpdate();
         await tabsManager.sendMessageToManagedTab({
@@ -166,30 +272,10 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
           payload: { url: newUrl },
         });
       }
-    } else {
-      // 3. User opened a new tab or navigated outside the managed study tab!
-      // Ask: "WHAT ARE YOU DOING?"
-      const isApproved = state.approvedUrls.some((u) => {
-        try {
-          return new URL(u).origin === new URL(newUrl).origin;
-        } catch {
-          return false;
-        }
-      });
-
-      if (!isApproved) {
-        setTimeout(async () => {
-          await chrome.tabs.sendMessage(tabId, {
-            type: 'CHECK_NAVIGATION_PERMISSION',
-            payload: { url: newUrl },
-          }).catch(() => {});
-        }, 600);
-      }
     }
   });
 
-  // Handle managed tab closure:
-  // "AND IF I CLOSE THE DESGNATED WEBSITE OF STUDY IT WILL ASK ME YOU ARE NOT DONE YET AND RE OPEN THE TAB AND SAY IF YOU WANNA CLSOE TEH SESSION I WILL LET YOU QUIT"
+  // 3. Handle managed tab closure
   chrome.tabs.onRemoved.addListener(async (tabId) => {
     if (tabId === tabsManager.getManagedTabId()) {
       const state = sessionManager.getState();
@@ -215,6 +301,36 @@ if (typeof chrome !== 'undefined' && chrome.tabs) {
     }
   });
 }
+
+/**
+ * Accurate Active Website Time Tracking (No Double Counting)
+ */
+setInterval(async () => {
+  const state = sessionManager.getState();
+  if (state.status === 'RunningStudy' && !state.isInterrogating) {
+    if (typeof chrome !== 'undefined' && chrome.tabs && chrome.tabs.query) {
+      try {
+        chrome.tabs.query({ active: true, lastFocusedWindow: true }, async (tabs) => {
+          if (tabs && tabs.length > 0 && tabs[0].url) {
+            const url = tabs[0].url;
+            if (
+              !url.startsWith('chrome://') &&
+              !url.startsWith('chrome-extension://') &&
+              !url.startsWith('brave://') &&
+              !url.startsWith('edge://') &&
+              url !== 'about:blank'
+            ) {
+              try {
+                const domain = new URL(url).hostname;
+                await ExtensionStorage.trackWebsiteTime(domain, 1);
+              } catch {}
+            }
+          }
+        });
+      } catch {}
+    }
+  }
+}, 1000);
 
 /**
  * Startup and Recovery: Check if alarms need reconciliation
@@ -333,6 +449,30 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
               break;
             }
 
+            case 'INTERROGATION_A_CHOSEN': {
+              const state = await sessionManager.resumeFromInterrogation();
+              if (state.deadline) {
+                await AlarmsManager.scheduleDeadlineAlarm(state.deadline);
+              }
+              broadcastStateUpdate();
+              sendResponse({ success: true, data: state });
+              break;
+            }
+
+            case 'INTERROGATION_B_RETURN': {
+              const state = await sessionManager.resumeFromInterrogation();
+              if (state.deadline) {
+                await AlarmsManager.scheduleDeadlineAlarm(state.deadline);
+              }
+              const managedId = tabsManager.getManagedTabId();
+              if (managedId && typeof chrome !== 'undefined' && chrome.tabs) {
+                chrome.tabs.update(managedId, { active: true }).catch(() => {});
+              }
+              broadcastStateUpdate();
+              sendResponse({ success: true, data: state });
+              break;
+            }
+
             case 'APPROVE_NAVIGATION': {
               const state = await sessionManager.approveNavigation(message.payload.url);
               broadcastStateUpdate();
@@ -362,6 +502,31 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
             case 'REPORT_MEDIA_STATE': {
               await sessionManager.setMediaPlayingState(message.payload.isPlaying);
               sendResponse({ success: true });
+              break;
+            }
+
+            case 'GET_ANALYTICS': {
+              const analytics = await ExtensionStorage.getAnalytics();
+              sendResponse({ success: true, data: analytics });
+              break;
+            }
+
+            case 'ADD_CUSTOM_BLACKLIST': {
+              const updated = await ExtensionStorage.addCustomBlacklistDomain(message.payload.domain);
+              sendResponse({ success: true, data: updated });
+              break;
+            }
+
+            case 'REMOVE_CUSTOM_BLACKLIST': {
+              const updated = await ExtensionStorage.removeCustomBlacklistDomain(message.payload.domain);
+              sendResponse({ success: true, data: updated });
+              break;
+            }
+
+            case 'CLEAR_HISTORY': {
+              await ExtensionStorage.clearAnalytics();
+              const cleared = await ExtensionStorage.getAnalytics();
+              sendResponse({ success: true, data: cleared });
               break;
             }
 

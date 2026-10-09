@@ -51,11 +51,58 @@ export interface SessionState {
   // Media State
   wasMediaPlayingBeforeBreak: boolean;
   
-  // Metadata
+  // Metadata & Enforcement
   startedAt: number | null;
   completedAt: number | null;
   errorMessage?: string;
   lastTransitionProcessedId?: string; // Tracks the last processed transition ID to prevent duplicate firing
+  violationCount: number; // 3-strike violation tracker
+  isInterrogating: boolean; // paused while new-tab interrogation modal is open
+}
+
+export interface WebsiteVisit {
+  domain: string;
+  totalSeconds: number;
+  visitCount: number;
+  lastVisited: number;
+  isCustomBlocked?: boolean;
+}
+
+export interface CompletedSessionLog {
+  id: string;
+  mode: SessionMode;
+  subjectName: string;
+  startedAt: number;
+  endedAt: number;
+  durationMinutes: number;
+  status: 'Completed' | 'Terminated' | 'Interrupted';
+}
+
+export interface StudyAnalytics {
+  totalSecondsStudied: number;
+  completedPomodoroCount: number;
+  dailyStudySeconds: Record<string, number>; // YYYY-MM-DD -> seconds
+  sessions: CompletedSessionLog[];
+  websiteVisits: Record<string, WebsiteVisit>;
+  customBlacklist: string[];
+}
+
+export const INITIAL_ANALYTICS: StudyAnalytics = {
+  totalSecondsStudied: 0,
+  completedPomodoroCount: 0,
+  dailyStudySeconds: {},
+  sessions: [],
+  websiteVisits: {},
+  customBlacklist: [],
+};
+
+/**
+ * Calculates dynamic days remaining until GATE CSE on 7 February 2027
+ */
+export function getDaysToGateCSE(currentDate = new Date()): number {
+  const examDate = new Date('2027-02-07T00:00:00');
+  const diffMs = examDate.getTime() - currentDate.getTime();
+  return Math.max(0, Math.ceil(diffMs / (1000 * 60 * 60 * 24)));
 }
 
 export interface ExtensionSettings {
@@ -86,4 +133,6 @@ export const INITIAL_SESSION_STATE: SessionState = {
   wasMediaPlayingBeforeBreak: false,
   startedAt: null,
   completedAt: null,
+  violationCount: 0,
+  isInterrogating: false,
 };

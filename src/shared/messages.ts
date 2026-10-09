@@ -32,7 +32,15 @@ export type ExtensionMessage =
   | { type: 'REQUEST_RESUME_MEDIA' }
   | { type: 'SHOW_BLOCKED_NOTICE'; payload: { blockedUrl: string } }
   | { type: 'SHOW_REOPENED_PROMPT' }
+  | { type: 'SHOW_INTERROGATION_PROMPT'; payload: { subjectName: string; remainingMinutes: number; daysToGate: number } }
+  | { type: 'SHOW_STRIKE_WARNING'; payload: { strike: number; message: string; isFinalCountdown?: boolean } }
+  | { type: 'INTERROGATION_A_CHOSEN' }
+  | { type: 'INTERROGATION_B_RETURN' }
   | { type: 'QUIT_SESSION' }
+  | { type: 'GET_ANALYTICS' }
+  | { type: 'ADD_CUSTOM_BLACKLIST'; payload: { domain: string } }
+  | { type: 'REMOVE_CUSTOM_BLACKLIST'; payload: { domain: string } }
+  | { type: 'CLEAR_HISTORY' }
   | { type: 'CONTENT_SCRIPT_PING' };
 
 export type ExtensionResponse<T = unknown> = {

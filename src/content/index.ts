@@ -157,6 +157,43 @@ if (typeof chrome !== 'undefined' && chrome.runtime) {
           sendResponse({ success: true });
           break;
         }
+
+        case 'SHOW_INTERROGATION_PROMPT': {
+          navigationGuard.showNewTabInterrogation(
+            message.payload.subjectName,
+            message.payload.remainingMinutes,
+            message.payload.daysToGate,
+            () => {
+              chrome.runtime.sendMessage<ExtensionMessage>({
+                type: 'INTERROGATION_A_CHOSEN',
+              });
+            },
+            () => {
+              chrome.runtime.sendMessage<ExtensionMessage>({
+                type: 'INTERROGATION_B_RETURN',
+              });
+            }
+          );
+          sendResponse({ success: true });
+          break;
+        }
+
+        case 'SHOW_STRIKE_WARNING': {
+          navigationGuard.showStrikeWarning(
+            message.payload.strike,
+            message.payload.message,
+            message.payload.isFinalCountdown,
+            () => {
+              if (message.payload.isFinalCountdown) {
+                chrome.runtime.sendMessage<ExtensionMessage>({
+                  type: 'QUIT_SESSION',
+                });
+              }
+            }
+          );
+          sendResponse({ success: true });
+          break;
+        }
       }
       return false;
     }
