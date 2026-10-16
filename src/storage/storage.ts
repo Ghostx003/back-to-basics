@@ -18,32 +18,84 @@ const STORAGE_KEYS = {
   ANALYTICS: 'b2b_study_analytics',
 } as const;
 
-// Default initial templates to help users start immediately with sensible defaults
+// Clean initial templates with empty fields instead of dummy Wikipedia/OS links
 export const DEFAULT_SCHEDULED_SUBJECTS: ScheduledSubject[] = [
   {
-    id: 's1',
-    name: 'Mathematics',
-    url: 'https://en.wikipedia.org/wiki/Mathematics',
-    durationMinutes: 40,
-  },
-  {
-    id: 's2',
-    name: 'Operating Systems',
-    url: 'https://en.wikipedia.org/wiki/Operating_system',
-    durationMinutes: 35,
+    id: 'sched_1',
+    name: '',
+    url: '',
+    durationMinutes: 30,
   },
 ];
 
 export const DEFAULT_POMODORO_SUBJECTS: PomodoroSubject[] = [
   {
-    id: 'p1',
-    name: 'Operating Systems',
-    url: 'https://en.wikipedia.org/wiki/Operating_system',
+    id: 'pomo_1',
+    name: '',
+    url: '',
     sessions: 3,
     studyDurationMinutes: 25,
     breakDurationMinutes: 5,
   },
 ];
+
+/**
+ * Strips legacy template placeholder data (Wikipedia links, OS dummy names)
+ * so users aren't stuck with stale defaults on page refresh.
+ */
+export function cleanLegacyScheduledSubjects(subjects: ScheduledSubject[]): ScheduledSubject[] {
+  if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+    return DEFAULT_SCHEDULED_SUBJECTS;
+  }
+  const cleaned = subjects.map((s) => {
+    let name = s.name || '';
+    let url = s.url || '';
+    if (
+      name === 'Mathematics' ||
+      name === 'Operating Systems' ||
+      name === 'Operating Systems & Architecture'
+    ) {
+      name = '';
+    }
+    if (
+      url.includes('wikipedia.org/wiki/Mathematics') ||
+      url.includes('wikipedia.org/wiki/Operating_system') ||
+      url === 'https://youtube.com'
+    ) {
+      url = '';
+    }
+    return { ...s, name, url };
+  });
+
+  return cleaned.length > 0 ? cleaned : DEFAULT_SCHEDULED_SUBJECTS;
+}
+
+export function cleanLegacyPomodoroSubjects(subjects: PomodoroSubject[]): PomodoroSubject[] {
+  if (!subjects || !Array.isArray(subjects) || subjects.length === 0) {
+    return DEFAULT_POMODORO_SUBJECTS;
+  }
+  const cleaned = subjects.map((s) => {
+    let name = s.name || '';
+    let url = s.url || '';
+    if (
+      name === 'Mathematics' ||
+      name === 'Operating Systems' ||
+      name === 'Operating Systems & Architecture'
+    ) {
+      name = '';
+    }
+    if (
+      url.includes('wikipedia.org/wiki/Mathematics') ||
+      url.includes('wikipedia.org/wiki/Operating_system') ||
+      url === 'https://youtube.com'
+    ) {
+      url = '';
+    }
+    return { ...s, name, url };
+  });
+
+  return cleaned.length > 0 ? cleaned : DEFAULT_POMODORO_SUBJECTS;
+}
 
 /**
  * Safe wrapper around chrome.storage.local with fallback for non-extension environments (tests).
@@ -96,14 +148,16 @@ export class ExtensionStorage {
     if (this.isChromeStorageAvailable()) {
       return new Promise((resolve) => {
         chrome.storage.local.get([STORAGE_KEYS.SCHEDULED_CONFIG], (result) => {
-          resolve(result[STORAGE_KEYS.SCHEDULED_CONFIG] || DEFAULT_SCHEDULED_SUBJECTS);
+          const raw = result[STORAGE_KEYS.SCHEDULED_CONFIG];
+          resolve(raw ? cleanLegacyScheduledSubjects(raw) : DEFAULT_SCHEDULED_SUBJECTS);
         });
       });
     }
 
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.SCHEDULED_CONFIG);
-      return raw ? JSON.parse(raw) : DEFAULT_SCHEDULED_SUBJECTS;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed ? cleanLegacyScheduledSubjects(parsed) : DEFAULT_SCHEDULED_SUBJECTS;
     } catch {
       return DEFAULT_SCHEDULED_SUBJECTS;
     }
@@ -111,7 +165,7 @@ export class ExtensionStorage {
 
   static async saveScheduledConfig(subjects: ScheduledSubject[]): Promise<void> {
     if (this.isChromeStorageAvailable()) {
-      return new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         chrome.storage.local.set(
           { [STORAGE_KEYS.SCHEDULED_CONFIG]: subjects },
           () => resolve()
@@ -128,14 +182,16 @@ export class ExtensionStorage {
     if (this.isChromeStorageAvailable()) {
       return new Promise((resolve) => {
         chrome.storage.local.get([STORAGE_KEYS.POMODORO_CONFIG], (result) => {
-          resolve(result[STORAGE_KEYS.POMODORO_CONFIG] || DEFAULT_POMODORO_SUBJECTS);
+          const raw = result[STORAGE_KEYS.POMODORO_CONFIG];
+          resolve(raw ? cleanLegacyPomodoroSubjects(raw) : DEFAULT_POMODORO_SUBJECTS);
         });
       });
     }
 
     try {
       const raw = localStorage.getItem(STORAGE_KEYS.POMODORO_CONFIG);
-      return raw ? JSON.parse(raw) : DEFAULT_POMODORO_SUBJECTS;
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed ? cleanLegacyPomodoroSubjects(parsed) : DEFAULT_POMODORO_SUBJECTS;
     } catch {
       return DEFAULT_POMODORO_SUBJECTS;
     }
@@ -143,7 +199,7 @@ export class ExtensionStorage {
 
   static async savePomodoroConfig(subjects: PomodoroSubject[]): Promise<void> {
     if (this.isChromeStorageAvailable()) {
-      return new Promise((resolve) => {
+      await new Promise<void>((resolve) => {
         chrome.storage.local.set(
           { [STORAGE_KEYS.POMODORO_CONFIG]: subjects },
           () => resolve()

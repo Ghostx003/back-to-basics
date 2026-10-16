@@ -59,8 +59,12 @@ export const DashboardApp: React.FC = () => {
       ) {
         setActiveView('live-monitor');
       } else {
-        // Default to scheduled view for easy configuration
-        setActiveView('scheduled');
+        let savedView: ViewKey = 'scheduled';
+        try {
+          const stored = localStorage.getItem('b2b_dashboard_view') as ViewKey;
+          if (stored) savedView = stored;
+        } catch {}
+        setActiveView(savedView);
       }
 
       setIsLoading(false);
@@ -224,7 +228,12 @@ export const DashboardApp: React.FC = () => {
       {/* Left Sidebar */}
       <Sidebar
         activeView={activeView}
-        onSelectView={setActiveView}
+        onSelectView={(view) => {
+          setActiveView(view);
+          try {
+            localStorage.setItem('b2b_dashboard_view', view);
+          } catch {}
+        }}
         session={session}
         onPause={handlePause}
         onResume={handleResume}
@@ -240,14 +249,32 @@ export const DashboardApp: React.FC = () => {
             onReset={handleReset}
             onSkipBreak={handleSkipBreak}
             onQuitSession={handleQuitSession}
-            onNavigateToScheduled={() => setActiveView('scheduled')}
-            onNavigateToPomodoro={() => setActiveView('pomodoro')}
+            onNavigateToScheduled={() => {
+              setActiveView('scheduled');
+              try {
+                localStorage.setItem('b2b_dashboard_view', 'scheduled');
+              } catch {}
+            }}
+            onNavigateToPomodoro={() => {
+              setActiveView('pomodoro');
+              try {
+                localStorage.setItem('b2b_dashboard_view', 'pomodoro');
+              } catch {}
+            }}
+            analytics={analytics}
+            scheduledSubjects={scheduledSubjects}
+            pomodoroSubjects={pomodoroSubjects}
+            onStartScheduled={handleStartScheduled}
+            onStartPomodoro={handleStartPomodoro}
+            settings={settings}
+            onUpdateSettings={handleUpdateSettings}
           />
         )}
 
         {activeView === 'scheduled' && (
           <ScheduledStudyView
             initialSubjects={scheduledSubjects}
+            onUpdate={setScheduledSubjects}
             onStart={handleStartScheduled}
             isSessionActive={isSessionActive}
           />
@@ -256,6 +283,7 @@ export const DashboardApp: React.FC = () => {
         {activeView === 'pomodoro' && (
           <PomodoroView
             initialSubjects={pomodoroSubjects}
+            onUpdate={setPomodoroSubjects}
             onStart={handleStartPomodoro}
             isSessionActive={isSessionActive}
           />

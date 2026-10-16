@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
   Clock,
   Clipboard,
   Play,
   Plus,
-  Sparkles,
   Trash2,
 } from 'lucide-react';
 import { ScheduledSubject } from '../../shared/types';
+import { ExtensionStorage } from '../../storage/storage';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
@@ -16,54 +16,65 @@ interface ScheduledStudyViewProps {
   initialSubjects: ScheduledSubject[];
   onStart: (subjects: ScheduledSubject[]) => void;
   isSessionActive: boolean;
+  onUpdate?: (subjects: ScheduledSubject[]) => void;
 }
 
 export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
   initialSubjects,
   onStart,
   isSessionActive,
+  onUpdate,
 }) => {
   const [subjects, setSubjects] = useState<ScheduledSubject[]>(() => {
     if (initialSubjects && initialSubjects.length > 0) return initialSubjects;
     return [
       {
         id: 'sched_1',
-        name: 'Mathematics',
-        url: 'https://youtube.com',
-        durationMinutes: 40,
-      },
-      {
-        id: 'sched_2',
-        name: 'Operating Systems',
-        url: 'https://en.wikipedia.org/wiki/Operating_system',
-        durationMinutes: 35,
+        name: '',
+        url: '',
+        durationMinutes: 30,
       },
     ];
   });
 
+  useEffect(() => {
+    if (initialSubjects && initialSubjects.length > 0) {
+      setSubjects(initialSubjects);
+    }
+  }, [initialSubjects]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clipboardNotice, setClipboardNotice] = useState<string | null>(null);
 
+  const saveAndNotify = (updated: ScheduledSubject[]) => {
+    ExtensionStorage.saveScheduledConfig(updated);
+    onUpdate?.(updated);
+  };
+
   const handleAddRow = () => {
     const newId = `sched_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    setSubjects((prev) => [
-      ...prev,
+    const next: ScheduledSubject[] = [
+      ...subjects,
       {
         id: newId,
-        name: `Subject ${prev.length + 1}`,
+        name: `Subject ${subjects.length + 1}`,
         url: '',
         durationMinutes: 30,
       },
-    ]);
+    ];
+    setSubjects(next);
+    saveAndNotify(next);
   };
 
   const handleRemoveRow = (id: string) => {
     if (subjects.length <= 1) return;
-    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    const next = subjects.filter((s) => s.id !== id);
+    setSubjects(next);
+    saveAndNotify(next);
     setErrors((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
     });
   };
 
@@ -72,14 +83,14 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
     field: keyof ScheduledSubject,
     value: string | number
   ) => {
-    setSubjects((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
-    );
+    const next = subjects.map((s) => (s.id === id ? { ...s, [field]: value } : s));
+    setSubjects(next);
+    saveAndNotify(next);
     if (errors[id]) {
       setErrors((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
       });
     }
   };
@@ -133,7 +144,12 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
 
   const handleStart = () => {
     if (!validate()) return;
-    onStart(subjects);
+    const subjectsToStart = subjects.map((s, idx) => ({
+      ...s,
+      name: s.name.trim() || `Subject ${idx + 1}`,
+    }));
+    ExtensionStorage.saveScheduledConfig(subjectsToStart);
+    onStart(subjectsToStart);
   };
 
   const totalMinutes = subjects.reduce((sum, s) => sum + (Number(s.durationMinutes) || 0), 0);
@@ -149,7 +165,7 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
             <Clock className="w-5 h-5 text-primary-light" />
-            Scheduled Study Configuration
+            Scheduled Study
           </h2>
           <p className="text-xs text-text-secondary mt-0.5">
             Configure your subject schedule in advance. Back to Basics manages the tabs and automatic transitions.
@@ -205,11 +221,11 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-surface-subtle/80 border-b border-surface-border text-text-secondary font-semibold uppercase tracking-wider">
-                <th className="py-3 px-4 w-12 text-center">#</th>
-                <th className="py-3 px-4 w-56">Subject Name</th>
-                <th className="py-3 px-4 min-w-[260px]">Study URL</th>
-                <th className="py-3 px-4 w-36">Duration</th>
-                <th className="py-3 px-4 w-16 text-center">Action</th>
+                <th className="py-3.5 px-4 w-12 text-center">#</th>
+                <th className="py-3.5 px-4 w-80 md:w-96 min-w-[280px]">Subject Name</th>
+                <th className="py-3.5 px-4 min-w-[260px]">Study URL</th>
+                <th className="py-3.5 px-4 w-36">Duration</th>
+                <th className="py-3.5 px-4 w-16 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border/60">
@@ -225,14 +241,14 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
                       {index + 1}
                     </td>
 
-                    {/* Subject Name */}
+                    {/* Subject Name - Enriched & Bigger */}
                     <td className="py-3 px-4">
                       <input
                         type="text"
                         value={subj.name}
                         onChange={(e) => handleUpdate(subj.id, 'name', e.target.value)}
                         placeholder={`Subject ${index + 1}`}
-                        className="w-full bg-surface-subtle border border-surface-border rounded-md px-2.5 py-1.5 text-xs text-white placeholder-text-muted focus:outline-none focus:border-primary"
+                        className="w-full bg-surface-subtle border border-surface-border rounded-lg px-3.5 py-2 text-sm font-medium text-white placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                       />
                     </td>
 
@@ -244,17 +260,17 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
                           value={subj.url}
                           onChange={(e) => handleUpdate(subj.id, 'url', e.target.value)}
                           placeholder="https://example.com/lecture"
-                          className={`flex-1 bg-surface-subtle border rounded-md px-2.5 py-1.5 text-xs font-mono text-white placeholder-text-muted focus:outline-none ${
+                          className={`flex-1 bg-surface-subtle border rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-text-muted focus:outline-none ${
                             hasError ? 'border-red-500' : 'border-surface-border focus:border-primary'
                           }`}
                         />
                         <button
                           type="button"
                           onClick={() => handlePasteUrl(subj.id)}
-                          className="px-2 py-1.5 rounded-md bg-surface border border-surface-border hover:bg-surface-elevated text-text-secondary hover:text-white transition-colors text-[11px] flex items-center gap-1 shrink-0 font-medium"
+                          className="px-2.5 py-2 rounded-lg bg-surface border border-surface-border hover:bg-surface-elevated text-text-secondary hover:text-white transition-colors text-[11px] flex items-center gap-1 shrink-0 font-medium"
                           title="Paste URL from clipboard"
                         >
-                          <Clipboard className="w-3 h-3" />
+                          <Clipboard className="w-3.5 h-3.5" />
                           Paste
                         </button>
                       </div>
@@ -275,7 +291,7 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
                               Math.max(1, parseInt(e.target.value) || 1)
                             )
                           }
-                          className="w-16 bg-surface-subtle border border-surface-border rounded-md px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
+                          className="w-16 bg-surface-subtle border border-surface-border rounded-lg px-2 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
                         />
                         <span className="text-text-muted text-[11px]">mins</span>
                       </div>
@@ -287,7 +303,7 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
                         type="button"
                         onClick={() => handleRemoveRow(subj.id)}
                         disabled={subjects.length <= 1}
-                        className="p-1.5 rounded text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                        className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                         title="Remove row"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -325,14 +341,6 @@ export const ScheduledStudyView: React.FC<ScheduledStudyViewProps> = ({
             Add another row
           </button>
         </div>
-      </Card>
-
-      {/* Philosophy Callout */}
-      <Card variant="subtle" className="p-4 border-dashed border-surface-border/70 flex items-start gap-3">
-        <Sparkles className="w-4 h-4 text-primary-light shrink-0 mt-0.5" />
-        <p className="text-xs text-text-muted italic leading-relaxed">
-          «Make it easier to start studying, harder to get distracted, and unnecessary to keep making decisions throughout a study session.»
-        </p>
       </Card>
     </div>
   );

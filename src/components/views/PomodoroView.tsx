@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   AlertCircle,
   BookOpen,
   Clipboard,
-  Flame,
   Play,
   Plus,
   Trash2,
 } from 'lucide-react';
 import { PomodoroSubject } from '../../shared/types';
+import { ExtensionStorage } from '../../storage/storage';
 import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 
@@ -16,20 +16,22 @@ interface PomodoroViewProps {
   initialSubjects: PomodoroSubject[];
   onStart: (subjects: PomodoroSubject[]) => void;
   isSessionActive: boolean;
+  onUpdate?: (subjects: PomodoroSubject[]) => void;
 }
 
 export const PomodoroView: React.FC<PomodoroViewProps> = ({
   initialSubjects,
   onStart,
   isSessionActive,
+  onUpdate,
 }) => {
   const [subjects, setSubjects] = useState<PomodoroSubject[]>(() => {
     if (initialSubjects && initialSubjects.length > 0) return initialSubjects;
     return [
       {
         id: 'pomo_1',
-        name: 'Operating Systems & Architecture',
-        url: 'https://youtube.com',
+        name: '',
+        url: '',
         sessions: 3,
         studyDurationMinutes: 25,
         breakDurationMinutes: 5,
@@ -37,31 +39,46 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
     ];
   });
 
+  useEffect(() => {
+    if (initialSubjects && initialSubjects.length > 0) {
+      setSubjects(initialSubjects);
+    }
+  }, [initialSubjects]);
+
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [clipboardNotice, setClipboardNotice] = useState<string | null>(null);
 
+  const saveAndNotify = (updated: PomodoroSubject[]) => {
+    ExtensionStorage.savePomodoroConfig(updated);
+    onUpdate?.(updated);
+  };
+
   const handleAddRow = () => {
     const newId = `pomo_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
-    setSubjects((prev) => [
-      ...prev,
+    const next: PomodoroSubject[] = [
+      ...subjects,
       {
         id: newId,
-        name: `Pomodoro Subject ${prev.length + 1}`,
+        name: `Pomodoro Subject ${subjects.length + 1}`,
         url: '',
         sessions: 2,
         studyDurationMinutes: 25,
         breakDurationMinutes: 5,
       },
-    ]);
+    ];
+    setSubjects(next);
+    saveAndNotify(next);
   };
 
   const handleRemoveRow = (id: string) => {
     if (subjects.length <= 1) return;
-    setSubjects((prev) => prev.filter((s) => s.id !== id));
+    const next = subjects.filter((s) => s.id !== id);
+    setSubjects(next);
+    saveAndNotify(next);
     setErrors((prev) => {
-      const next = { ...prev };
-      delete next[id];
-      return next;
+      const updated = { ...prev };
+      delete updated[id];
+      return updated;
     });
   };
 
@@ -70,14 +87,14 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
     field: keyof PomodoroSubject,
     value: string | number
   ) => {
-    setSubjects((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s))
-    );
+    const next = subjects.map((s) => (s.id === id ? { ...s, [field]: value } : s));
+    setSubjects(next);
+    saveAndNotify(next);
     if (errors[id]) {
       setErrors((prev) => {
-        const next = { ...prev };
-        delete next[id];
-        return next;
+        const updated = { ...prev };
+        delete updated[id];
+        return updated;
       });
     }
   };
@@ -137,7 +154,12 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
 
   const handleStart = () => {
     if (!validate()) return;
-    onStart(subjects);
+    const subjectsToStart = subjects.map((s, idx) => ({
+      ...s,
+      name: s.name.trim() || `Subject ${idx + 1}`,
+    }));
+    ExtensionStorage.savePomodoroConfig(subjectsToStart);
+    onStart(subjectsToStart);
   };
 
   const totalStudyMinutes = subjects.reduce(
@@ -157,7 +179,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
         <div>
           <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2">
             <BookOpen className="w-5 h-5 text-accent-emerald" />
-            Pomodoro Mode Configuration
+            Pomodoro Mode
           </h2>
           <p className="text-xs text-text-secondary mt-0.5">
             Structured intervals with enforced pitch-black breaks and automatic media pausing.
@@ -213,13 +235,13 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
           <table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="bg-surface-subtle/80 border-b border-surface-border text-text-secondary font-semibold uppercase tracking-wider">
-                <th className="py-3 px-4 w-12 text-center">#</th>
-                <th className="py-3 px-4 w-52">Subject Name</th>
-                <th className="py-3 px-4 min-w-[220px]">Target URL</th>
-                <th className="py-3 px-4 w-28 text-center">Intervals</th>
-                <th className="py-3 px-4 w-44">Study Duration</th>
-                <th className="py-3 px-4 w-40">Break Duration</th>
-                <th className="py-3 px-4 w-16 text-center">Action</th>
+                <th className="py-3.5 px-4 w-12 text-center">#</th>
+                <th className="py-3.5 px-4 w-72 md:w-80 min-w-[260px]">Subject Name</th>
+                <th className="py-3.5 px-4 min-w-[220px]">Target URL</th>
+                <th className="py-3.5 px-4 w-28 text-center">Intervals</th>
+                <th className="py-3.5 px-4 w-44">Study Duration</th>
+                <th className="py-3.5 px-4 w-40">Break Duration</th>
+                <th className="py-3.5 px-4 w-16 text-center">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-surface-border/60">
@@ -235,14 +257,14 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                       {index + 1}
                     </td>
 
-                    {/* Subject Name */}
+                    {/* Subject Name - Enriched & Bigger */}
                     <td className="py-3 px-4">
                       <input
                         type="text"
                         value={subj.name}
                         onChange={(e) => handleUpdate(subj.id, 'name', e.target.value)}
                         placeholder={`Subject ${index + 1}`}
-                        className="w-full bg-surface-subtle border border-surface-border rounded-md px-2.5 py-1.5 text-xs text-white placeholder-text-muted focus:outline-none focus:border-primary"
+                        className="w-full bg-surface-subtle border border-surface-border rounded-lg px-3.5 py-2 text-sm font-medium text-white placeholder-text-muted focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
                       />
                     </td>
 
@@ -254,17 +276,17 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                           value={subj.url}
                           onChange={(e) => handleUpdate(subj.id, 'url', e.target.value)}
                           placeholder="https://example.com"
-                          className={`flex-1 bg-surface-subtle border rounded-md px-2.5 py-1.5 text-xs font-mono text-white placeholder-text-muted focus:outline-none ${
+                          className={`flex-1 bg-surface-subtle border rounded-lg px-3 py-2 text-xs font-mono text-white placeholder-text-muted focus:outline-none ${
                             hasError ? 'border-red-500' : 'border-surface-border focus:border-primary'
                           }`}
                         />
                         <button
                           type="button"
                           onClick={() => handlePasteUrl(subj.id)}
-                          className="px-2 py-1.5 rounded-md bg-surface border border-surface-border hover:bg-surface-elevated text-text-secondary hover:text-white transition-colors text-[11px] flex items-center gap-1 shrink-0 font-medium"
+                          className="px-2.5 py-2 rounded-lg bg-surface border border-surface-border hover:bg-surface-elevated text-text-secondary hover:text-white transition-colors text-[11px] flex items-center gap-1 shrink-0 font-medium"
                           title="Paste URL from clipboard"
                         >
-                          <Clipboard className="w-3 h-3" />
+                          <Clipboard className="w-3.5 h-3.5" />
                           Paste
                         </button>
                       </div>
@@ -285,7 +307,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                               Math.max(1, parseInt(e.target.value) || 1)
                             )
                           }
-                          className="w-14 bg-surface-subtle border border-surface-border rounded-md px-2 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
+                          className="w-14 bg-surface-subtle border border-surface-border rounded-lg px-2 py-2 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
                         />
                         <span className="text-text-muted text-[11px]">sets</span>
                       </div>
@@ -297,7 +319,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdate(subj.id, 'studyDurationMinutes', 25)}
-                          className={`px-2 py-1 rounded text-[11px] font-semibold border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border ${
                             subj.studyDurationMinutes === 25
                               ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/50'
                               : 'bg-surface-subtle text-text-secondary border-surface-border hover:text-white'
@@ -308,7 +330,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdate(subj.id, 'studyDurationMinutes', 50)}
-                          className={`px-2 py-1 rounded text-[11px] font-semibold border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border ${
                             subj.studyDurationMinutes === 50
                               ? 'bg-emerald-600/30 text-emerald-300 border-emerald-500/50'
                               : 'bg-surface-subtle text-text-secondary border-surface-border hover:text-white'
@@ -328,7 +350,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                               Math.max(1, parseInt(e.target.value) || 1)
                             )
                           }
-                          className="w-12 bg-surface-subtle border border-surface-border rounded-md px-1.5 py-1 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
+                          className="w-12 bg-surface-subtle border border-surface-border rounded-lg px-1.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
                           title="Custom Study Duration"
                         />
                       </div>
@@ -340,7 +362,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdate(subj.id, 'breakDurationMinutes', 5)}
-                          className={`px-2 py-1 rounded text-[11px] font-semibold border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border ${
                             subj.breakDurationMinutes === 5
                               ? 'bg-amber-600/30 text-amber-300 border-amber-500/50'
                               : 'bg-surface-subtle text-text-secondary border-surface-border hover:text-white'
@@ -351,7 +373,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleUpdate(subj.id, 'breakDurationMinutes', 10)}
-                          className={`px-2 py-1 rounded text-[11px] font-semibold border ${
+                          className={`px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border ${
                             subj.breakDurationMinutes === 10
                               ? 'bg-amber-600/30 text-amber-300 border-amber-500/50'
                               : 'bg-surface-subtle text-text-secondary border-surface-border hover:text-white'
@@ -371,7 +393,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                               Math.max(1, parseInt(e.target.value) || 1)
                             )
                           }
-                          className="w-12 bg-surface-subtle border border-surface-border rounded-md px-1.5 py-1 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
+                          className="w-12 bg-surface-subtle border border-surface-border rounded-lg px-1.5 py-1.5 text-xs font-mono text-white focus:outline-none focus:border-primary text-center"
                           title="Custom Break Duration"
                         />
                       </div>
@@ -383,7 +405,7 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
                         type="button"
                         onClick={() => handleRemoveRow(subj.id)}
                         disabled={subjects.length <= 1}
-                        className="p-1.5 rounded text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                        className="p-2 rounded-lg text-text-muted hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-30 disabled:pointer-events-none"
                         title="Remove row"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
@@ -420,19 +442,6 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({
             <Plus className="w-3.5 h-3.5" />
             Add Pomodoro subject
           </button>
-        </div>
-      </Card>
-
-      {/* Enforcement Architecture Note */}
-      <Card variant="subtle" className="p-4 border-dashed border-surface-border/70 flex items-start gap-3">
-        <Flame className="w-4 h-4 text-accent-emerald shrink-0 mt-0.5" />
-        <div className="space-y-1">
-          <h4 className="text-xs font-semibold text-white">
-            Enforced Rest Architecture
-          </h4>
-          <p className="text-xs text-text-muted leading-relaxed">
-            When study time expires, a pitch-black overlay protects your rest and pauses active media. The timer is completely wall-clock based and independent of video playback speed.
-          </p>
         </div>
       </Card>
     </div>
